@@ -30,7 +30,7 @@ public:
 	std::random_device rd;  //Will be used to obtain a seed for the random number engine
 	std::vector<col> data;
 	std::vector<glm::ivec4> triangles;
-	int iterations = 400;
+	int iterations = 800;
 	/*Create seeded random source(spatial / non - spatial)
 		Set planet parameters*/
 
@@ -40,10 +40,10 @@ public:
 		triangles.clear();
 		//n triangles;
 
-		int nTriangles = 10;
+		int nTriangles = 20;
 		std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
 		std::uniform_int_distribution<int> dis(0, 1024);
-		std::uniform_int_distribution<int> disExtent(3, 15);
+		std::uniform_int_distribution<int> disExtent(-20, 20);
 
 
 		for (int i = 0; i < nTriangles; i++)
@@ -61,6 +61,9 @@ public:
 
 	void RaisePointsInTris()
 	{
+		std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+		std::uniform_int_distribution<int> dis(0, 15);
+
 		for (int i = 0; i < triangles.size(); i++)
 		{
 			for (int x = 0; x < triangles[i].z; x++)
@@ -70,19 +73,29 @@ public:
 					int xPos = triangles[i].x + x;
 					int yPos = triangles[i].y + y;
 
-					data[xPos + (yPos* reso)].r = 
+					if (xPos >= reso)
+					{
+						xPos = xPos - (reso);
+					}
 
+					if (yPos >= reso)
+					{
+						yPos = yPos - (reso);
+					}
 
+					if (yPos < 0)
+					{
+						yPos = yPos + reso;
+					}
+					if (xPos < 0)
+					{
+						xPos = xPos + reso;
+					}
 
+					data[xPos + (yPos * reso)].r += dis(gen);
+					data[xPos + (yPos * reso)].g += dis(gen);
+					data[xPos + (yPos * reso)].b += dis(gen);
 				}
-			}
-		}
-
-		for (int i = 0; i < 250; i++)
-		{
-			for (int y = 0; y < 233; y++)
-			{
-
 			}
 		}
 	}
@@ -90,13 +103,12 @@ public:
 	void FractureAlgo()
 	{
 		data = std::vector<col>(1024 * 1024);
-		CreateTris();
 
-
-		//for (int i = 0; i < iterations; i++)
-	//	{
+		for (int i = 0; i < iterations; i++)
+		{
+			CreateTris();
 			RaisePointsInTris();
-	//	}
+		}
 
 
 		for (int i = 0; i < reso * reso; i++)
@@ -105,10 +117,10 @@ public:
 		}
 
 
-		stbi_write_tga("surfaceTexture.png", reso, reso, 4, data.data());
+		stbi_write_tga("surfaceTexture.tga", reso, reso, 4, data.data());
 
 		int sizeX, sizeY, comp;
-		auto d = stbi_load("surfaceTexture.png", &sizeX, &sizeY, &comp, 4);
+		auto d = stbi_load("surfaceTexture.tga", &sizeX, &sizeY, &comp, 4);
 
 		//Create height map and normal map from surface texture
 	}
