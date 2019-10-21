@@ -25,12 +25,8 @@ private:
 	{
 		window = nullptr;
 		surface = nullptr;
+		renderer = nullptr;
 	}
-
-
-
-
-
 	const double frameTime = 1.0 / 60.0;
 	double deltaTime = 0;
 

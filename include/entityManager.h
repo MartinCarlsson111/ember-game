@@ -14,4 +14,5 @@ public:
 	Entity CreateEntity();
 	void RemoveEntity(const Entity e);
 	bool IsAlive(const Entity e) const;
+	Entity* GetEntities()const;
 };

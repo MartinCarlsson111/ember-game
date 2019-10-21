@@ -14,6 +14,9 @@
 #include "shader.h"
 #include "texture.h"
 #include "SDL2/SDL.h"
+#include "planetGen.h"
+#include "ecs.h"
+
 
 struct SpriteVertex
 {
@@ -30,8 +33,13 @@ struct SpriteVertex
 		data.w = rot;
 	}
 
-	SpriteVertex(glm::vec2 p, glm::vec4 d) : data(d), pos(p) {
+	SpriteVertex()
+	{
+		pos = glm::vec2(0);
+		data = glm::vec4(0);
+	}
 
+	SpriteVertex(glm::vec2 p, glm::vec4 d) : data(d), pos(p) {
 	}
 	glm::vec2 pos;
 	//xScale, yScale, sprite index, rotation(radians)
@@ -51,6 +59,7 @@ struct SpriteBatch
 
 class Renderer
 {
+	PlanetGen gen;
 	Camera camera;
 	std::vector<SpriteBatch> spriteBatches;
 public:
@@ -59,7 +68,7 @@ public:
 
 	void Render();
 
-	void Update(float dt);
+	void Update(float dt, ecs::ECS* ecs);
 
 	void AddSpriteBatch(GLuint vao, GLuint vbo, GLuint count, const GLuint textureHandle, const glm::vec4 textureData, const GLuint shaderHandle);
 	void AddSpriteBatch(SpriteBatch batch);

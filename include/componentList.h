@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 struct Position
 {
@@ -17,6 +18,11 @@ struct Position
 
 struct Scale
 {
+	Scale()
+	{
+
+	}
+
 	Scale(float x, float y):x(x), y(y)
 	{
 
@@ -24,6 +30,21 @@ struct Scale
 
 	float x = 0;
 	float y = 0;
+};
+
+struct Movable
+{
+
+};
+
+struct Velocity
+{
+	float x = 0, y = 0;
+};
+
+struct Player
+{
+	int id = 0;
 };
 
 struct Dynamic
@@ -44,6 +65,10 @@ struct Renderable
 
 struct Tile
 {
+	Tile()
+	{
+
+	}
 	Tile(int index) :index(index)
 	{}
 	int index = 0;

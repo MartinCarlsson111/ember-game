@@ -7,9 +7,14 @@
 class Pool
 {
 public:
+	Pool() :eManager(nullptr), size(0), used(0), componentArrayIndex(std::vector<uint32_t>())
+	{
+
+	}
+
 	void Init(Archetype type, uint32_t size, uint32_t componentArrayIndex[MAXCOMPONENTS])
 	{
-		eManager = EntityManager(size);
+		eManager = new EntityManager(size);
 		this->type = type;
 		this->size = size;
 		this->componentArrayIndex = std::vector<uint32_t>(componentArrayIndex, componentArrayIndex + MAXCOMPONENTS);
@@ -18,7 +23,8 @@ public:
 
 	void _free()
 	{
-		eManager._free();
+		eManager->_free();
+		delete eManager;
 	}
 
 	Archetype type;
@@ -43,9 +49,18 @@ public:
 		return used;
 	}
 
+	Entity* GetEntities() const
+	{
+		if (eManager != nullptr)
+		{
+			return eManager->GetEntities();
+		}
+		return nullptr;
+	}
+
 private:
 	uint32_t size = 0;
 	uint32_t used = 0;
-	EntityManager eManager;
+	EntityManager* eManager;
 	std::vector<uint32_t> componentArrayIndex;
 };

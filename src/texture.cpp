@@ -23,8 +23,8 @@ void Texture2DHandler::LoadTexture(const char* fileName, Texture2D& texture)
 	int halfHeight = height / 2;
 	for (int row = 0; row < halfHeight; row++)
 	{
-		top = imageData + row * widthInBytes;
-		bottom = imageData + (height - row - 1) * widthInBytes;
+		top = imageData + (size_t)row * widthInBytes;
+		bottom = imageData + ((size_t)height - row - 1) * widthInBytes;
 		for (int col = 0; col < widthInBytes; col++)
 		{
 			temp = *top;
@@ -37,13 +37,13 @@ void Texture2DHandler::LoadTexture(const char* fileName, Texture2D& texture)
 
 	glGenTextures(1, &texture.textureHandle);
 	glBindTexture(GL_TEXTURE_2D, texture.textureHandle);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
 
-	glGenerateMipmap(GL_TEXTURE_2D);
+	//glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(imageData);
 	glBindTexture(GL_TEXTURE_2D, 0);

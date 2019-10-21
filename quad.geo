@@ -17,8 +17,8 @@ void main()
     float spriteHeight = SpriteIn[0].data.y;
     highp int index = int(SpriteIn[0].data.z);
     highp int nWidth = int(tileMapData.z);
-    int yIndex = index % nWidth;
-    int xIndex = index / nWidth;
+    float yIndex = index / nWidth;
+    float xIndex = index % nWidth;
 
     gl_Position = vp *(gl_in[0].gl_Position + vec4(-spriteWidth, -spriteHeight, 0, 0));
     TexCoord = vec2((xIndex+1) * tileMapData.x, tileMapData.y * (yIndex+1));

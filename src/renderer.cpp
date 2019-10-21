@@ -8,8 +8,6 @@
 Renderer::Renderer(SDL_Window* window)
 	:camera(glm::vec3(0,0,0), 45, -1, 1000)
 {
-	
-
 	this->window = window;
 	context = SDL_GL_CreateContext(window);
 	glewExperimental = GL_TRUE;
@@ -21,6 +19,10 @@ Renderer::Renderer(SDL_Window* window)
 	glEnable(GL_MULTISAMPLE_ARB);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
+	glDisable(GL_CULL_FACE);
+
+	//gen.Generate(PlanetParameters());
+	//gen.shader.LoadShaders("colorShader.vert", "colorShader.frag");
 }
 
 Renderer::~Renderer()
@@ -28,9 +30,9 @@ Renderer::~Renderer()
 	SDL_GL_DeleteContext(context);
 }
 
-void Renderer::Update(float dt)
+void Renderer::Update(float dt, ecs::ECS* ecs)
 {
-	camera.Update();
+	camera.Update(ecs);
 }
 
 void Renderer::AddSpriteBatch(GLuint vao, GLuint vbo, GLuint count, const GLuint textureHandle, const glm::vec4 textureData, const GLuint shaderHandle)
@@ -79,6 +81,15 @@ void Renderer::Render()
 
 		glDrawArrays(GL_POINTS, 0, batch.count);
 	}
+
+	
+	//gen.shader.Use();
+	//gen.shader.SetUniform("model", glm::mat4(1));
+	//gen.shader.SetUniform("view", camera.GetView());
+	//gen.shader.SetUniform("projection", camera.GetProjection());
+	//glBindVertexArray(gen.mesh.mesh.vao);
+	//glDrawArrays(GL_TRIANGLES, 0, gen.mesh.vertices.size());
+
 	Swap();
 }
 

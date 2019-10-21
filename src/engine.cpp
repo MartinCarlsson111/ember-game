@@ -5,6 +5,8 @@
 #include "SDL2/sdl.h"
 #include "renderSystem.h"
 #include "SDL2/SDL_syswm.h"
+#include "tileSystem.h"
+#include "..//movementSystem.h"
 #undef event
 typedef SDL_Event Event;
 
@@ -36,26 +38,38 @@ Engine::~Engine()
 
 void Engine::Run()
 {
-	ecs::ECS ecs = ecs::ECS();
-	auto archetype = ecs.CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
+	ecs::ECS* ecs = new ecs::ECS();
 
-	uint32_t count = 500000;
-	for (size_t i = 0; i < count; i++)
-	{
-		auto e = ecs.CreateEntity(archetype);
+	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
+	auto playerarch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Player, Movable, Velocity, AABB, Dynamic>();
 
-		Position p = Position(i % 64, i / 64);
-		ecs.SetComponent<Position>(e, p);
+	auto player = ecs->CreateEntity(playerarch);
 
-		Scale scale = Scale(0.5f, 0.5f);
+	ecs->SetComponent<Position>(player, Position(0, 0));
+	ecs->SetComponent<Tile>(player, Tile(5));
+	ecs->SetComponent<Scale>(player, Scale(1.0f, 1.0f));
 
-		ecs.SetComponent<Scale>(e, scale);
 
-		Tile t = Tile(std::rand() % 255);
-		ecs.SetComponent<Tile>(e, t);
-	}
+	//uint32_t count = 100000;
+	//for (size_t i = 0; i < count; i++)
+	//{
+	//	auto e = ecs.CreateEntity(dynamic);
 
+	//	Position p = Position(i % 64, i / 64);
+	//	ecs.SetComponent<Position>(e, p);
+
+	//	Scale scale = Scale(0.5f, 0.5f);
+
+	//	ecs.SetComponent<Scale>(e, scale);
+
+	//	Tile t = Tile(std::rand() % 255);
+	//	ecs.SetComponent<Tile>(e, t);
+	//}
+	
 	RenderSystem renderSystem = RenderSystem();
+	TileSystem tileSystem = TileSystem();
+	MovementSystem moveSystem = MovementSystem();
+	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
 
 	while (isRunning)
 	{
@@ -105,8 +119,9 @@ void Engine::Run()
 			}
 			}
 		}
-		renderSystem.Update(&ecs, renderer);
-		renderer->Update(0.016f);
+		moveSystem.Move(ecs);
+		renderSystem.Update(ecs, renderer);
+		renderer->Update(0.016f, ecs);
 		renderer->Render();
 		if (Input::GetKeyDown(KeyCode::ESC))
 		{
@@ -120,4 +135,6 @@ void Engine::Run()
 			glViewport(wr.x, wr.y, wr.z, wr.w);
 		}
 	}
+	delete ecs;
+	ecs = nullptr;
 }

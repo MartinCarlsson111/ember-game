@@ -1,5 +1,7 @@
 #pragma once
 #include "glm/glm.hpp"
+#include "ecs.h"
+#include "componentList.h"
 class Camera
 {
 	glm::mat4 view;
@@ -14,10 +16,12 @@ class Camera
 	glm::vec3 forward;
 	glm::vec3 lookAt;
 
+	glm::vec3 center;
+
 public:
 
 	Camera(glm::vec3 position, float fov, float near, float far);
-	void Update();
+	void Update(ecs::ECS* ecs);
 	void SetPosition(glm::vec3 position);
 	void Move(glm::vec3 direction);
 

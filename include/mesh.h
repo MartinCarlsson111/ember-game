@@ -11,6 +11,7 @@ class _Mesh
 {
 public:
 	void CreateUnitQuad();
+	void CreateSphere(float radius);
 	void Initialize();
 	void DeleteBuffers();
 

@@ -3,11 +3,11 @@
 void Pool::RemoveEntity(Entity e)
 {
 	used--;
-	eManager.RemoveEntity(e);
+	eManager->RemoveEntity(e);
 }
 
 Entity Pool::CreateEntity()
 {
 	used++;
-	return eManager.CreateEntity();;
+	return eManager->CreateEntity();;
 }

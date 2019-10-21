@@ -6,7 +6,7 @@ EntityManager::EntityManager(uint32_t size)
 	intervals = IntervalSet(0, size);
 }
 
-EntityManager::EntityManager()
+EntityManager::EntityManager(): entities(nullptr)
 {
 }
 
@@ -41,4 +41,9 @@ bool EntityManager::IsAlive(const Entity e) const
 		return true;
 	}
 	return false;
+}
+
+Entity* EntityManager::GetEntities() const
+{
+	return entities;
 }

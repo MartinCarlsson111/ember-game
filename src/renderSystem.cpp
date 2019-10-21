@@ -2,7 +2,13 @@
 #include "componentList.h"
 #include <iostream>
 
+#include <algorithm>
 
+RenderSystem::RenderSystem()
+{
+	textureHandler.LoadTextureNoFlip("tileset.png", texture);
+	shader.LoadShaders("basic.vert", "basic.frag", "quad.geo");
+}
 
 RenderSystem::~RenderSystem()
 {
@@ -22,32 +28,24 @@ RenderSystem::~RenderSystem()
 
 void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 {
-
 	if (staticTiles == Archetype())
 	{
 		staticTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
 
 		auto pos = ecs->GetComponents<Position>(staticTiles);
 		auto tiles = ecs->GetComponents<Tile>(staticTiles);
-		std::vector<SpriteVertex> vertices;
+		auto scales = ecs->GetComponents<Scale>(staticTiles);
 
-		for (auto interval : pos.intervals)
+		//GatherTiles spriteVertex = GatherTiles(pos, tiles, scales);
+
+		//tbb::parallel_for(tbb::blocked_range<size_t>((size_t)0, pos.comps.size()), spriteVertex);
+		std::vector<SpriteVertex> vertices =  std::vector<SpriteVertex>(pos.comps.size());
+
+		for (int i = 0; i < vertices.size(); i++)
 		{
-			int size = interval.index + interval.count;
-			for (int i = interval.index; i < size; i++)
-			{
-				vertices.push_back(SpriteVertex(glm::vec2(pos.data[i].x, pos.data[i].y), glm::vec4(0.5f, 0.5f, 1, 0)));
-			}
+			vertices[i] = SpriteVertex(glm::vec2(pos.comps[i].x, pos.comps[i].y), glm::vec4(scales.comps[i].x, scales.comps[i].y, tiles.comps[i].index, 0));
 		}
 
-		for (auto interval : tiles.intervals)
-		{
-			int size = interval.index + interval.count;
-			for (int i = interval.index; i < size; i++)
-			{
-				vertices[i].data.z = tiles.data[i].index;
-			}
-		}
 		if (vertices.size() == 0)
 		{
 			batch.count = 0;
@@ -55,9 +53,7 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 		else
 		{
 			if (batch.vbo == 0)
-			{
-				
-
+			{ 
 				glGenBuffers(1, &batch.vbo);
 				glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
 				glBufferData(GL_ARRAY_BUFFER, vertices.size() * (sizeof(SpriteVertex)), &vertices[0], GL_STREAM_DRAW);
@@ -70,10 +66,10 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
 
-				float tileWidth = 16;
-				float width = 1.0f / 512.0f * tileWidth;
+				float tileWidth = 256;
+				float width = 1.0f / 8191 * tileWidth;
 
-				batch.textureData = glm::vec4(width, width, tileWidth, tileWidth);
+				batch.textureData = glm::vec4(width, width, 32, 32);
 				batch.textureHandle = texture.textureHandle;
 				batch.shaderHandle = shader.handle;
 			}
@@ -88,44 +84,19 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 	}
 
 	dynamicTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
-	std::vector<SpriteVertex> vertices;
 
 	auto pos = ecs->GetComponents<Position>(dynamicTiles);
 	auto tiles = ecs->GetComponents<Tile>(dynamicTiles);
 	auto scale = ecs->GetComponents<Scale>(dynamicTiles);
+	std::vector<SpriteVertex> vertices = std::vector<SpriteVertex>(pos.comps.size());
 
-	for (auto interval : pos.intervals)
+	for (int i = 0; i < vertices.size(); i++)
 	{
-		int size = interval.index + interval.count;
-		for (int i = interval.index; i < size; i++)
-		{
-			vertices.push_back(SpriteVertex(glm::vec2(pos.data[i].x, pos.data[i].y), glm::vec4(0.5f, 0.5f, 1, 0)));
-		}
-	}
-	int counter = 0;
-
-	for (auto interval : tiles.intervals)
-	{
-		int size = interval.index + interval.count;
-		for (int i = interval.index; i < size; i++)
-		{
-			vertices[counter].data.z = tiles.data[i].index;
-			counter++;
-		}
+		vertices[i] = SpriteVertex(glm::vec2(pos.comps[i].x, pos.comps[i].y), glm::vec4(scale.comps[i].x, scale.comps[i].y, tiles.comps[i].index, 0));
 	}
 
-	counter = 0;
 
-	for (auto interval : scale.intervals)
-	{
-		int size = interval.index + interval.count;
-		for (int i = interval.index; i < size; i++)
-		{
-			vertices[counter].data.x = scale.data[i].x;
-			vertices[counter].data.y = scale.data[i].y;
-			counter++;
-		}
-	}
+	
 
 	if (vertices.size() == 0)
 	{
@@ -135,8 +106,6 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 	{
 		if (dynamicBatch.vbo == 0)
 		{
-			shader.LoadShaders("basic.vert", "basic.frag", "quad.geo");
-			textureHandler.LoadTextureNoFlip("atlas.png", texture);
 			glGenBuffers(1, &dynamicBatch.vbo);
 			glBindBuffer(GL_ARRAY_BUFFER, dynamicBatch.vbo);
 			glBufferData(GL_ARRAY_BUFFER, vertices.size() * (sizeof(SpriteVertex)), &vertices[0], GL_STREAM_DRAW);
@@ -150,9 +119,9 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 			glBindVertexArray(0);
 
 			float tileWidth = 16;
-			float width = 1.0f / 512.0f * tileWidth;
+			float width = 1.0f / 511.0f * tileWidth;
 
-			dynamicBatch.textureData = glm::vec4(width, width, tileWidth, tileWidth);
+			dynamicBatch.textureData = glm::vec4(width, width, 32, 32);
 			dynamicBatch.textureHandle = texture.textureHandle;
 			dynamicBatch.shaderHandle = shader.handle;
 		}
@@ -165,7 +134,7 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 		dynamicBatch.count = vertices.size();
 	}
 	renderer->AddSpriteBatch(dynamicBatch);
-	//renderer->AddSpriteBatch(batch);
+	renderer->AddSpriteBatch(batch);
 }
 
 void RenderSystem::Start()

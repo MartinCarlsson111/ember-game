@@ -13,13 +13,14 @@ namespace ecs
 {
 	struct ArrayIntervals
 	{
-		ArrayIntervals(int index, int count)
-			:index(index), count(count)
+		ArrayIntervals(int index, int count, Pool* pool)
+			:index(index), count(count), pool(pool)
 		{
 
 		}
 		int count = 0;
 		int index = 0;
+		Pool* pool;
 	};
 	class ECS
 	{
@@ -55,19 +56,33 @@ namespace ecs
 		template <typename T>
 		struct ComponentData
 		{
-			struct DataArray
+			ComponentData()
 			{
-				T* data;
-				int count;
-			};
 
-			DataArray next()
-			{
-				return DataArray();
 			}
-			T* data;
-			uint32_t size = 0;
-			std::vector<ArrayIntervals> intervals;
+
+			void init(std::vector<ecs::ArrayIntervals> intervals, ComponentArray* compArray)
+			{
+				auto type = ComponentType::id<T>();
+				int size = 0;
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					size += intervals[i].count;
+				}
+				comps = std::vector<T>(size);
+				entities = std::vector<Entity>(size);
+				int lastSize = 0;
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					ComponentArray arr = compArray[type];
+					T* dataArr = (T*)arr.data;
+					memcpy(&comps[lastSize], &dataArr[intervals[i].index], intervals[i].count * sizeof(T));
+					memcpy(&entities[lastSize], intervals[i].pool->GetEntities(), intervals[i].count * sizeof(Entity));
+					lastSize += intervals[i].count;
+				}
+			}
+			std::vector<T> comps;
+			std::vector<Entity> entities;
 		private:
 		};
 
@@ -102,7 +117,6 @@ namespace ecs
 		template<typename T>
 		void PreAlloc(uint32_t count);
 
-		//entity array
 		Entity* CreateEntities(Archetype archetype, uint32_t count);
 
 		template<typename T>
@@ -176,9 +190,6 @@ namespace ecs
 	inline ECS::ComponentData<T> ECS::GetComponents()
 	{
 		ComponentData<T> data;
-		//data.arrIntervals = ArrayIntervals();
-
-		//TODO: get intervals
 		data.size = components[ComponentType::id<T>()].allocations;
 		data.data = (T*)components[ComponentType::id<T>()].data;
 		return data;
@@ -186,23 +197,17 @@ namespace ecs
 	template<typename T>
 	inline ECS::ComponentData<T> ECS::GetComponents(Archetype archetype)
 	{
-		ComponentData<T> data;
-		
-		data.intervals = std::vector<ArrayIntervals>();
-		data.size = 0;
-
-		size_t type = ComponentType::id<T>();
-
-		data.data = (T*)components[type].data;
-
+		std::vector<ArrayIntervals> intervals;
 		for (auto pool : pools)
 		{
 			if (pool.type.has(archetype))
 			{
-				data.intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed()));
+				intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed(), &pool));
 			}
 		}
-		return data;
+		auto d = ComponentData<T>();
+		d.init(intervals, components);
+		return d;
 	}
 
 	template<typename T>
@@ -215,8 +220,17 @@ namespace ecs
 
 	inline void ECS::ComponentArray::allocre(uint32_t alloc)
 	{
-		data = realloc(data, (alloc + allocations) * typeSize);
-		allocations += alloc;
+		void* rea = realloc(data, (alloc + allocations) * typeSize);
+		if (rea != nullptr)
+		{
+			data = rea;
+			allocations += alloc;
+		}
+		else
+		{
+			allocations = 0;
+			free(data);
+		}
 	}
 	template<typename T>
 	inline void ECS::ComponentArray::alloc(uint32_t alloc)
