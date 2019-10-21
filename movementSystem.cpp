@@ -21,7 +21,8 @@ void MovementSystem::Move(ecs::ECS* ecs)
 
 	for (int i = 0; i < playerVel.comps.size(); i++)
 	{
-		playerVel.comps[i].x = Input::GetKey(KeyCode::A) ? 1 : Input::GetKey(KeyCode::D) ? -1 : 0;
+		playerVel.comps[i].x = Input::GetKey(KeyCode::A) ? -1 : Input::GetKey(KeyCode::D) ? 1 : 0;
+		playerVel.comps[i].x *= 0.05f;
 		ecs->SetComponent<Velocity>(playerVel.entities[i], playerVel.comps[i]);
 	}	
 }
