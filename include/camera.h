@@ -21,7 +21,7 @@ class Camera
 public:
 
 	Camera(glm::vec3 position, float fov, float near, float far);
-	void Update(ecs::ECS* ecs);
+	void Update(float dt, ecs::ECS* ecs);
 	void SetPosition(glm::vec3 position);
 	void Move(glm::vec3 direction);
 

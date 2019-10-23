@@ -8,6 +8,10 @@
 #include "tileSystem.h"
 #include "..//movementSystem.h"
 #undef event
+#include "..//broadphaseSystem.h"
+#include <chrono>
+#include <iostream>
+
 typedef SDL_Event Event;
 
 glm::ivec4 Engine::wr = glm::vec4();
@@ -35,44 +39,115 @@ Engine::~Engine()
 	renderer = nullptr;
 	SDL_DestroyWindow(window);
 }
+#include <cstdint>
+
+struct position {
+	float x;
+	float y;
+};
+
+struct velocity {
+	float dx;
+	float dy;
+};
+
+
 
 void Engine::Run()
 {
 	ecs::ECS* ecs = new ecs::ECS();
 
-	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
 	auto playerarch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Player, Movable, Velocity, AABB, Dynamic>();
-
+	auto dynamic = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Movable, Velocity, AABB, Dynamic>();
+	auto staticArch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, AABB, Static>();
 	auto player = ecs->CreateEntity(playerarch);
 
 	ecs->SetComponent<Position>(player, Position(0, 0));
 	ecs->SetComponent<Tile>(player, Tile(5));
-	ecs->SetComponent<Scale>(player, Scale(1.0f, 1.0f));
+	ecs->SetComponent<Scale>(player, Scale(0.5f, 0.5f));
+
+	AABB aabbPlayer = AABB(0.5f, 0.5f, player.componentMask);
+	aabbPlayer.w = 1.0f;
+	aabbPlayer.h = 1.0f;
+	aabbPlayer.collisionMask = player.componentMask;
+	aabbPlayer.isStatic = false;
+	ecs->SetComponent<AABB>(player, aabbPlayer);
 
 
-	//uint32_t count = 100000;
+	//entt::registry registry;
+	//registry.reset();
+	//for (auto i = 0; i < 1048575; ++i) {
+	//	auto entity = registry.create();
+	//	registry.assign<position>(entity, i * 1.f, i * 1.f);
+	//	if (i % 2 == 0) { registry.assign<velocity>(entity, i * .1f, i * .1f); }
+	//}
+	// ...
+	
+	uint32_t countStatic = 1000;
+
+	uint32_t targetWorldHeight = 5;
+	uint32_t divisor = countStatic / targetWorldHeight;
+
+	for (int i = 0; i < countStatic; i++)
+	{
+		auto e = ecs->CreateEntity(staticArch);
+
+		Position p = Position(i % divisor, i / divisor);
+		ecs->SetComponent<Position>(e, p);
+
+		Scale scale = Scale(0.5f, 0.5f);
+		ecs->SetComponent<Scale>(e, scale);
+
+		Tile t = Tile(std::rand() % 11);
+		ecs->SetComponent<Tile>(e, t);
+
+		AABB aabb = AABB();
+		aabb.h = 1;
+		aabb.w = 1;
+		aabb.collisionMask = staticArch.types();
+		ecs->SetComponent<AABB>(e, aabb);
+
+	}
+
+
+	//uint32_t count = 100;
 	//for (size_t i = 0; i < count; i++)
 	//{
-	//	auto e = ecs.CreateEntity(dynamic);
+	//	auto e = ecs->CreateEntity(dynamic);
 
 	//	Position p = Position(i % 64, i / 64);
-	//	ecs.SetComponent<Position>(e, p);
+	//	ecs->SetComponent<Position>(e, p);
 
 	//	Scale scale = Scale(0.5f, 0.5f);
 
-	//	ecs.SetComponent<Scale>(e, scale);
+	//	ecs->SetComponent<Scale>(e, scale);
 
 	//	Tile t = Tile(std::rand() % 255);
-	//	ecs.SetComponent<Tile>(e, t);
+	//	ecs->SetComponent<Tile>(e, t);
+
+	//	ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
+	//	AABB aabb = AABB();
+	//	aabb.h = 1;
+	//	aabb.w = 1;					
+	//	aabb.collisionMask = dynamic.types();
+	//	ecs->SetComponent<AABB>(e, aabb);
 	//}
-	
+	//
 	RenderSystem renderSystem = RenderSystem();
 	TileSystem tileSystem = TileSystem();
 	MovementSystem moveSystem = MovementSystem();
-	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
 
+	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
+	BroadPhaseSystem broadPhaseSystem = BroadPhaseSystem();
+	using namespace std;
+
+	double frameTimeAccu = 0.0;
+	int frameCounter = 0;
+	auto begin = chrono::high_resolution_clock::now();
 	while (isRunning)
 	{
+		auto end = chrono::high_resolution_clock::now();
+		auto dt = end - begin;
 		Input::Update();
 		Event event;
 		while (SDL_PollEvent(&event) != 0)
@@ -119,9 +194,10 @@ void Engine::Run()
 			}
 			}
 		}
-		moveSystem.Move(ecs);
-		renderSystem.Update(ecs, renderer);
-		renderer->Update(0.016f, ecs);
+		moveSystem.Move(dt.count() * 0.000000001f, ecs);
+		broadPhaseSystem.Run(ecs);
+	    renderSystem.Update(ecs, renderer);
+		renderer->Update(dt.count() * 0.000000001f, ecs);
 		renderer->Render();
 		if (Input::GetKeyDown(KeyCode::ESC))
 		{
@@ -134,6 +210,18 @@ void Engine::Run()
 			SDL_GetWindowPosition(window, &wr.x, &wr.y);
 			glViewport(wr.x, wr.y, wr.z, wr.w);
 		}
+
+		auto ms = std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count();
+		frameTimeAccu += ms;
+		frameCounter++;
+		if (frameTimeAccu >= 1000000000.0)
+		{
+			cout << frameCounter << endl;
+			frameTimeAccu = 0.0;
+			frameCounter = 0;
+		}
+		//cout << ms << endl;
+		begin = end;
 	}
 	delete ecs;
 	ecs = nullptr;

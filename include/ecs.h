@@ -53,6 +53,7 @@ namespace ecs
 		ComponentArray components[MAXCOMPONENTS];
 		std::vector<Pool> pools;
 	public:
+
 		template <typename T>
 		struct ComponentData
 		{
@@ -194,16 +195,20 @@ namespace ecs
 		data.data = (T*)components[ComponentType::id<T>()].data;
 		return data;
 	}
+
+
 	template<typename T>
 	inline ECS::ComponentData<T> ECS::GetComponents(Archetype archetype)
 	{
 		std::vector<ArrayIntervals> intervals;
+		int counter = 0;
 		for (auto pool : pools)
 		{
 			if (pool.type.has(archetype))
 			{
-				intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed(), &pool));
+				intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed(), &pools[counter]));
 			}
+			counter++;
 		}
 		auto d = ComponentData<T>();
 		d.init(intervals, components);

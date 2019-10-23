@@ -6,8 +6,8 @@ void Pool::RemoveEntity(Entity e)
 	eManager->RemoveEntity(e);
 }
 
-Entity Pool::CreateEntity()
+Entity Pool::CreateEntity(Archetype type, uint16_t poolId)
 {
 	used++;
-	return eManager->CreateEntity();;
+	return eManager->CreateEntity(type, poolId);;
 }

@@ -16,6 +16,15 @@
     <Filter Include="Header Files\ecs">
       <UniqueIdentifier>{8a5fee1d-2947-4813-8050-0ed579e41142}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\systems">
+      <UniqueIdentifier>{6240cd46-283d-4187-86e7-bd14bddcf853}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\physics">
+      <UniqueIdentifier>{dc7d141d-f7a3-4658-894f-1f3b748f88f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\physics\collision">
+      <UniqueIdentifier>{91320522-4ce2-463b-90e8-509d0fc99296}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -64,6 +73,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="movementSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="broadphaseSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -131,23 +143,38 @@
     <ClInclude Include="include\vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\renderSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\planetGen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\planetParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\tileSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\ecs.h">
       <Filter>Header Files\ecs</Filter>
     </ClInclude>
     <ClInclude Include="movementSystem.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\renderSystem.h">
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tileSystem.h">
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="animationSystem.h">
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="broadphaseSystem.h">
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="narrowphaseSystem.h">
+      <Filter>Header Files\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\emberGJK.h">
+      <Filter>Header Files\physics\collision</Filter>
+    </ClInclude>
+    <ClInclude Include="include\emberCol.h">
+      <Filter>Header Files\physics\collision</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

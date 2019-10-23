@@ -1,6 +1,7 @@
 #pragma once
 #include "entity.h"
 #include "interval.h"
+#include "archetype.h"
 class EntityManager
 {
 	Entity* entities;
@@ -11,7 +12,7 @@ public:
 
 
 	void _free();
-	Entity CreateEntity();
+	Entity CreateEntity(Archetype componentMask, uint16_t poolId);
 	void RemoveEntity(const Entity e);
 	bool IsAlive(const Entity e) const;
 	Entity* GetEntities()const;

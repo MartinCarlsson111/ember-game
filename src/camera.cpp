@@ -7,7 +7,9 @@
 #undef near
 #undef far
 
-const float zoomSpeed = 0.05f;
+const float zoomSpeed = 15.0f;
+
+const float movementSpeed = 3.0f;
 
 Camera::Camera(glm::vec3 position, float fov, float near, float far)
 {
@@ -22,44 +24,43 @@ Camera::Camera(glm::vec3 position, float fov, float near, float far)
 }
 
 #include <iostream>
-void Camera::Update(ecs::ECS* ecs)
+void Camera::Update(float dt, ecs::ECS* ecs)
 {
 	//if (Input::GetKey(KeyCode::A))
 	//{
-	//	position.x -= 0.1f;
+	//	position.x -= movementSpeed * dt;
 	//}
 	//if (Input::GetKey(KeyCode::D))
 	//{
-	//	position.x += 0.1f;
+	//	position.x += movementSpeed * dt;
 	//}
 
 	//if (Input::GetKey(KeyCode::W))
 	//{
-	//	position.y -= 0.1f;
+	//	position.y -= movementSpeed * dt;
 	//}
 	//if (Input::GetKey(KeyCode::S))
 	//{
-	//	position.y += 0.1f;
+	//	position.y += movementSpeed * dt;
 	//}
 
 	auto arch = ecs->CreateArchetype<Position, Player>();
 
 	auto playerPos = ecs->GetComponents<Position>(arch);
-
-	position = glm::vec4(playerPos.comps[0].x / zoom, playerPos.comps[0].y / zoom, 0, 0) + glm::vec4(0.0f, 0, 0, 0);
+	float aspectRat = (float)Engine::wr.w / (float)Engine::wr.z;
+	position = glm::vec4(playerPos.comps[0].x / zoom, -playerPos.comps[0].y / (zoom * aspectRat), 0, 0) + glm::vec4(0.0f, 0, 0, 0);
 	lookAt = position;
+
 	view = glm::lookAt(lookAt, lookAt + glm::vec3(0, 0, 1), glm::vec3(0, -1, 0));
 
-	std::cout << "pos: x:  " << position[0] << " y: " << position[1] << std::endl;
-	float aspectRat = (float)Engine::wr.w / (float)Engine::wr.z;
+
 
 	//projection = glm::ortho(0.0f, (float)Engine::wr.z, (float)Engine::wr.w, 0.0f, near, far);
-	projection = glm::ortho(-zoom, zoom, zoom, -zoom, near, far);
+	projection = glm::ortho(-zoom, zoom, zoom*aspectRat, -zoom*aspectRat, near, far);
 	float mWheel = Input::GetMouseWheel();
 	if (mWheel != 0)
 	{
 		zoom += mWheel* zoomSpeed;
-		std::cout << "zoom: " << zoom << std::endl;
 		if (zoom <= 10)
 		{
 			zoom = 10.0f;

@@ -119,9 +119,8 @@ Entity ecs::ECS::CreateEntity(Archetype archetype)
 		CreatePool(archetype);
 		selectedPool = pools.size() - 1;
 	}
-	auto entity = pools[selectedPool].CreateEntity();
-	entity.componentMask = archetype;
-	entity.poolId = selectedPool;
+	auto entity = pools[selectedPool].CreateEntity(archetype, selectedPool);
+
 	return entity;
 }
 

@@ -29,7 +29,7 @@ public:
 
 	Archetype type;
 	void RemoveEntity(Entity e);
-	Entity CreateEntity();
+	Entity CreateEntity(Archetype type, uint16_t poolId);
 
 	template<typename T>
 	uint32_t GetIndex() const

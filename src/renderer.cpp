@@ -21,6 +21,7 @@ Renderer::Renderer(SDL_Window* window)
 	glEnable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
 
+	SDL_GL_SetSwapInterval(0);
 	//gen.Generate(PlanetParameters());
 	//gen.shader.LoadShaders("colorShader.vert", "colorShader.frag");
 }
@@ -32,7 +33,7 @@ Renderer::~Renderer()
 
 void Renderer::Update(float dt, ecs::ECS* ecs)
 {
-	camera.Update(ecs);
+	camera.Update(dt, ecs);
 }
 
 void Renderer::AddSpriteBatch(GLuint vao, GLuint vbo, GLuint count, const GLuint textureHandle, const glm::vec4 textureData, const GLuint shaderHandle)

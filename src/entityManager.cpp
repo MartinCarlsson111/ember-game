@@ -8,6 +8,7 @@ EntityManager::EntityManager(uint32_t size)
 
 EntityManager::EntityManager(): entities(nullptr)
 {
+
 }
 
 
@@ -21,10 +22,11 @@ void EntityManager::_free()
 	}
 }
 
-Entity EntityManager::CreateEntity()
+Entity EntityManager::CreateEntity(Archetype type, uint16_t poolId)
 {
 	uint32_t index = intervals.GetFirst();
-	Entity e = Entity(index, entities[index].version());
+	Entity e = Entity(index, entities[index].version(), type.types(), poolId);
+	entities[index] = e;
 	return e;
 }
 

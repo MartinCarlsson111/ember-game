@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <Windows.h>
 #include "GL\glew.h"
 #include "GL\wglew.h"

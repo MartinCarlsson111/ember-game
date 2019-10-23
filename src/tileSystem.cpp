@@ -16,8 +16,8 @@ TileSystem::~TileSystem()
 
 void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 {
-	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
-	auto stat = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
+	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic, AABB>();
+	auto stat = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static, AABB>();
 	using namespace tinyxml2;
 
 	XMLDocument doc;
@@ -44,11 +44,11 @@ void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 
 				auto child = chunkNode->FirstChildElement();
 
-				for (int x = chunkWidth-1; x >= 0; x--)
+				for (int x = chunkWidth - 1; x >= 0; x--)
 				{
-					for (int y = chunkHeight-1; y >= 0; y--)
+					for (int y = chunkHeight - 1; y >= 0; y--)
 					{
-						auto id = child->IntAttribute("gid", -1); 
+						auto id = child->IntAttribute("gid", -1);
 						if (id != -1 && id < 992)
 						{
 							auto e = ecs->CreateEntity(stat);
@@ -60,8 +60,14 @@ void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 							ecs->SetComponent<Scale>(e, scale);
 
 							Tile t = Tile(id);
-							ecs->SetComponent<Tile>(e, id-1);
+							ecs->SetComponent<Tile>(e, id - 1);
 
+							AABB aabb = AABB();
+							aabb.h = 1;
+							aabb.w = 1;
+							aabb.collisionMask = stat.types();
+
+							ecs->SetComponent<AABB>(e, aabb);
 						}
 						child = child->NextSiblingElement();
 					}

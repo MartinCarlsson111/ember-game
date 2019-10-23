@@ -13,21 +13,3 @@ public:
 		return _id;
 	}
 };
-
-
-/*
-struct Position : ComponentBase
-{
-	float3 value;
-}
-
-struct Velocity : ComponentBase
-{
-	float3 value;
-}
-
-struct Speed : ComponentBase
-{
-	float value;
-}
-*/

@@ -4,5 +4,5 @@ class MovementSystem
 {
 public:
 
-	void Move(ecs::ECS* ecs);
+	void Move(float dt, ecs::ECS* ecs);
 };

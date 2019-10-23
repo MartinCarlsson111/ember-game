@@ -41,3 +41,4 @@
 *.ipdb
 *.enc
 release/
+include/entt/
