@@ -69,18 +69,12 @@ float BroadPhaseSystem::CalculateTOI(AABBMani a, glm::vec2 velocity, AABBMani b,
 {
 	//test if A and B collide within maxTime
 
-
-
 	glm::vec2 maxVelocity = glm::vec2();
-
 	glm::vec2 d = velocity / maxVelocity;
-
 	int nSteps = d.x > d.y ? (int)d.x : (int)d.y;
-
 	glm::vec2 aContactPoint = glm::vec2();
 	//glm::vec2 bContactPoint = glm::vec2();
 	glm::vec2 normal = glm::vec2();
-
 	//test if velocity is within maxRange
 
 	float t = 0;
@@ -94,7 +88,6 @@ float BroadPhaseSystem::CalculateTOI(AABBMani a, glm::vec2 velocity, AABBMani b,
 		if (m.count != 0)
 		{
 			aContactPoint = m.contactPoint1;
-			//depth? 
 			normal = m.n;
 			t = 1;
 			break;
@@ -115,6 +108,8 @@ void BroadPhaseSystem::Run(ecs::ECS* ecs)
 	auto aabbs = ecs->GetComponents<AABB>(aabbEntities);
 	auto pos = ecs->GetComponents<Position>(aabbEntities);
 
+	//radix sort
+	//init array
 
 	unsigned long long count = 0;
 	for (int i = 0; i < aabbs.comps.size(); i++)

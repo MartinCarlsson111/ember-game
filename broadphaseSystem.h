@@ -17,24 +17,6 @@ class BroadPhaseSystem
 		glm::vec2 max;
 	};
 
-#define nullNode (-1)
-	struct bPTreeNode
-	{
-		bool isLeaf()const {
-			return child1 == nullNode;
-		}
-
-		void* userdata;
-		AABB enlargedAABB;
-
-		int32_t height;
-		int32_t parent;
-		int32_t child1;
-		int32_t child2;
-	};
-
-	int32_t root;
-	bPTreeNode* nodes;
 public:
 	void Run(ecs::ECS* ecs);
 	void AABBtoAABBManifold(AABBMani A, AABBMani B, Manifold& m);
