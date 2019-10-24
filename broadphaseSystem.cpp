@@ -103,14 +103,14 @@ float BroadPhaseSystem::CalculateTOI(AABBMani a, glm::vec2 velocity, AABBMani b,
 
 void BroadPhaseSystem::Run(ecs::ECS* ecs)
 {
-	auto aabbEntities = ecs->CreateArchetype<Position, AABB>();
+	//auto aabbEntities = ecs->CreateArchetype<Position, AABB>();
 
-	auto aabbs = ecs->GetComponents<AABB>(aabbEntities);
-	auto pos = ecs->GetComponents<Position>(aabbEntities);
+	//auto aabbs = ecs->GetComponents<AABB>(aabbEntities);
+	//auto pos = ecs->GetComponents<Position>(aabbEntities);
 
 	//radix sort
 	//init array
-
+/*
 	unsigned long long count = 0;
 	for (int i = 0; i < aabbs.comps.size(); i++)
 	{
@@ -136,9 +136,5 @@ void BroadPhaseSystem::Run(ecs::ECS* ecs)
 				}
 			}
 		}
-	}
-
-
-
-
+	}*/
 }

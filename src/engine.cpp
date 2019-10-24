@@ -12,6 +12,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "entt/entt.hpp"
+
 typedef SDL_Event Event;
 
 glm::ivec4 Engine::wr = glm::vec4();
@@ -39,17 +41,6 @@ Engine::~Engine()
 	renderer = nullptr;
 	SDL_DestroyWindow(window);
 }
-#include <cstdint>
-
-struct position {
-	float x;
-	float y;
-};
-
-struct velocity {
-	float dx;
-	float dy;
-};
 
 
 
@@ -73,19 +64,9 @@ void Engine::Run()
 	aabbPlayer.isStatic = false;
 	ecs->SetComponent<AABB>(player, aabbPlayer);
 
+	uint32_t countStatic = 1000000;
 
-	//entt::registry registry;
-	//registry.reset();
-	//for (auto i = 0; i < 1048575; ++i) {
-	//	auto entity = registry.create();
-	//	registry.assign<position>(entity, i * 1.f, i * 1.f);
-	//	if (i % 2 == 0) { registry.assign<velocity>(entity, i * .1f, i * .1f); }
-	//}
-	// ...
-	
-	uint32_t countStatic = 1000;
-
-	uint32_t targetWorldHeight = 5;
+	uint32_t targetWorldHeight = 50;
 	uint32_t divisor = countStatic / targetWorldHeight;
 
 	for (int i = 0; i < countStatic; i++)
@@ -106,33 +87,31 @@ void Engine::Run()
 		aabb.w = 1;
 		aabb.collisionMask = staticArch.types();
 		ecs->SetComponent<AABB>(e, aabb);
-
 	}
 
+	uint32_t count = 100001;
+	for (size_t i = 0; i < count; i++)
+	{
+		auto e = ecs->CreateEntity(dynamic);
 
-	//uint32_t count = 100;
-	//for (size_t i = 0; i < count; i++)
-	//{
-	//	auto e = ecs->CreateEntity(dynamic);
+		Position p = Position(i % 64, i / 64);
+		ecs->SetComponent<Position>(e, p);
 
-	//	Position p = Position(i % 64, i / 64);
-	//	ecs->SetComponent<Position>(e, p);
+		Scale scale = Scale(0.5f, 0.5f);
 
-	//	Scale scale = Scale(0.5f, 0.5f);
+		ecs->SetComponent<Scale>(e, scale);
 
-	//	ecs->SetComponent<Scale>(e, scale);
+		Tile t = Tile(std::rand() % 255);
+		ecs->SetComponent<Tile>(e, t);
 
-	//	Tile t = Tile(std::rand() % 255);
-	//	ecs->SetComponent<Tile>(e, t);
-
-	//	ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
-	//	AABB aabb = AABB();
-	//	aabb.h = 1;
-	//	aabb.w = 1;					
-	//	aabb.collisionMask = dynamic.types();
-	//	ecs->SetComponent<AABB>(e, aabb);
-	//}
-	//
+		ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
+		AABB aabb = AABB();
+		aabb.h = 1;
+		aabb.w = 1;					
+		aabb.collisionMask = dynamic.types();
+		ecs->SetComponent<AABB>(e, aabb);
+	}
+	
 	RenderSystem renderSystem = RenderSystem();
 	TileSystem tileSystem = TileSystem();
 	MovementSystem moveSystem = MovementSystem();
@@ -199,6 +178,7 @@ void Engine::Run()
 	    renderSystem.Update(ecs, renderer);
 		renderer->Update(dt.count() * 0.000000001f, ecs);
 		renderer->Render();
+
 		if (Input::GetKeyDown(KeyCode::ESC))
 		{
 			isRunning = false;

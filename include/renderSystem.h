@@ -6,6 +6,7 @@
 #include "tbb/parallel_for.h"
 #include "tbb/blocked_range.h"
 #include "componentList.h"
+#include "vertex.h"
 class RenderSystem
 {
 	SpriteBatch batch;
@@ -19,35 +20,20 @@ class RenderSystem
 	class GatherTiles
 	{
 	private:
-		ecs::ECS::ComponentData<Position> positions;
-
-		ecs::ECS::ComponentData<Tile> tiles;
-		ecs::ECS::ComponentData<Scale> scales;
-		void foo(int index)
-		{
-			//vertices[index].data = positions;
-			//vertices[index].pos = glm::vec2(0);
-		}
-
 	public:
 		std::vector<SpriteVertex> vertices;
-		GatherTiles(ecs::ECS::ComponentData<Position> pos, ecs::ECS::ComponentData<Tile> tiles, ecs::ECS::ComponentData<Scale> scale)
+		GatherTiles()
 		{
-			positions = pos;
-			scales = scale;
-			this->tiles = tiles;
-			//vertices = std::vector<SpriteVertex>(pos.size);
 		}
 
-		void operator()(const tbb::blocked_range<size_t>& r) {
-			for (size_t i = r.begin(); i != r.end(); ++i)
-			{
-				foo(i);
-			}
+		void operator()() {
 		}
 	};
 
+
+
 public:
+	std::vector<SpriteVertex> vertices;
 	RenderSystem();
 	~RenderSystem();
 	void Update(ecs::ECS* ecs, Renderer* renderer);

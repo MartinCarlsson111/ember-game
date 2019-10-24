@@ -26,27 +26,37 @@ RenderSystem::~RenderSystem()
 	}
 }
 
+struct gatherTiles {
+	gatherTiles() {}
+	void operator()(int index, std::vector<SpriteVertex>& vertices, const Position p, const Tile t, const Scale s ) {
+		vertices[index] = SpriteVertex(p.x, p.y, 0, s.x, s.y, t.index);
+	}
+};
+
 void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 {
 	if (staticTiles == Archetype())
 	{
 		staticTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
+		ecs::ECS::ComponentData<Position> pos;
 
-		auto pos = ecs->GetComponents<Position>(staticTiles);
+		ecs->GetComponents<Position>(staticTiles, pos);
 		auto tiles = ecs->GetComponents<Tile>(staticTiles);
 		auto scales = ecs->GetComponents<Scale>(staticTiles);
 
-		//GatherTiles spriteVertex = GatherTiles(pos, tiles, scales);
+		std::vector<SpriteVertex> staticVertices = std::vector<SpriteVertex>(pos.comps.size());
+		gatherTiles gatherT = gatherTiles();
+		tbb::parallel_for(
+			tbb::blocked_range<size_t>(0, pos.comps.size()),
+			[&gatherT, &pos, &tiles, &scales, &staticVertices](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i < r.end(); ++i)
+				{
+					gatherT(i, staticVertices, pos.comps[i], tiles.comps[i], scales.comps[i]);
+				}
+			}
+		);
 
-		//tbb::parallel_for(tbb::blocked_range<size_t>((size_t)0, pos.comps.size()), spriteVertex);
-		std::vector<SpriteVertex> vertices =  std::vector<SpriteVertex>(pos.comps.size());
-
-		for (int i = 0; i < vertices.size(); i++)
-		{
-			vertices[i] = SpriteVertex(glm::vec2(pos.comps[i].x, pos.comps[i].y), glm::vec4(scales.comps[i].x, scales.comps[i].y, tiles.comps[i].index, 0));
-		}
-
-		if (vertices.size() == 0)
+		if (staticVertices.size() == 0)
 		{
 			batch.count = 0;
 		}
@@ -56,7 +66,7 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 			{ 
 				glGenBuffers(1, &batch.vbo);
 				glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-				glBufferData(GL_ARRAY_BUFFER, vertices.size() * (sizeof(SpriteVertex)), &vertices[0], GL_STREAM_DRAW);
+				glBufferData(GL_ARRAY_BUFFER, staticVertices.size() * (sizeof(SpriteVertex)), &staticVertices[0], GL_STREAM_DRAW);
 				glGenVertexArrays(1, &batch.vao);
 				glBindVertexArray(batch.vao);
 				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
@@ -76,27 +86,33 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 			else
 			{
 				glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-				glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(SpriteVertex), &vertices[0], GL_STREAM_DRAW);
+				glBufferData(GL_ARRAY_BUFFER, staticVertices.size() * sizeof(SpriteVertex), &staticVertices[0], GL_STREAM_DRAW);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 			}
-			batch.count = vertices.size();
+			batch.count = staticVertices.size();
 		}
 	}
 
 	dynamicTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
-
-	auto pos = ecs->GetComponents<Position>(dynamicTiles);
+	ecs::ECS::ComponentData<Position> pos;
+	ecs->GetComponents<Position>(dynamicTiles, pos);
 	auto tiles = ecs->GetComponents<Tile>(dynamicTiles);
 	auto scale = ecs->GetComponents<Scale>(dynamicTiles);
-	std::vector<SpriteVertex> vertices = std::vector<SpriteVertex>(pos.comps.size());
-
-	for (int i = 0; i < vertices.size(); i++)
+	if (vertices.size() < pos.comps.size())
 	{
-		vertices[i] = SpriteVertex(glm::vec2(pos.comps[i].x, pos.comps[i].y), glm::vec4(scale.comps[i].x, scale.comps[i].y, tiles.comps[i].index, 0));
+		vertices.resize(pos.comps.size());
 	}
 
-
-	
+	gatherTiles gatherT = gatherTiles();
+	tbb::parallel_for(
+		tbb::blocked_range<size_t>(0, pos.comps.size()),
+		[&gatherT, &pos, &tiles, &scale, this](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i < r.end(); ++i)
+			{
+				gatherT(i, vertices, pos.comps[i], tiles.comps[i], scale.comps[i]);
+			}
+		}
+	);
 
 	if (vertices.size() == 0)
 	{

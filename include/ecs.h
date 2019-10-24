@@ -9,6 +9,36 @@
 #include "pool.h"
 #include "globals.h"
 
+//TODO: Options
+//I want different memory layout for different components
+//I need faster accessing
+//removing
+//Faster setting
+//memcpy sucks
+//but maybe sucks is better than garbage..
+//but how to get contigous arrays?
+//better use of SIMD data structures
+
+//entt seems to use similar concept, but std::fill? perf is the same - 20%
+//array of pointers to array.......
+
+//only build once, then maintain it...
+//increases complexity when deleting/removing
+//seems bad
+
+
+//cache the get arrays
+//keep track of when changes have been made
+
+
+
+
+//Components as 
+//data storage
+//system
+
+
+
 namespace ecs
 {
 	struct ArrayIntervals
@@ -70,15 +100,17 @@ namespace ecs
 				{
 					size += intervals[i].count;
 				}
+				//entities = std::vector<Entity>(size);
 				comps = std::vector<T>(size);
-				entities = std::vector<Entity>(size);
+
 				int lastSize = 0;
 				for (int i = 0; i < intervals.size(); i++)
 				{
 					ComponentArray arr = compArray[type];
 					T* dataArr = (T*)arr.data;
+					//memcpy(&entities[lastSize], intervals[i].pool->GetEntities(), intervals[i].count * sizeof(Entity));
 					memcpy(&comps[lastSize], &dataArr[intervals[i].index], intervals[i].count * sizeof(T));
-					memcpy(&entities[lastSize], intervals[i].pool->GetEntities(), intervals[i].count * sizeof(Entity));
+
 					lastSize += intervals[i].count;
 				}
 			}
@@ -143,7 +175,15 @@ namespace ecs
 		ComponentData<T> GetComponents(Archetype archetype);
 
 		template <typename T>
+		void GetComponents(Archetype a, ecs::ECS::ComponentData<T>& comp);
+
+		template <typename T>
 		T GetComponent(Entity e);
+
+		template <typename T>
+		T* GetComponentArray(size_t& size);
+
+
 	};
 
 
@@ -216,11 +256,35 @@ namespace ecs
 	}
 
 	template<typename T>
+	inline void ECS::GetComponents(Archetype a, ecs::ECS::ComponentData<T>& comp)
+	{
+		std::vector<ArrayIntervals> intervals;
+		int counter = 0;
+		for (auto pool : pools)
+		{
+			if (pool.type.has(a))
+			{
+				intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed(), &pools[counter]));
+			}
+			counter++;
+		}
+		comp.init(intervals, components);
+	}
+
+	template<typename T>
 	inline T ECS::GetComponent(Entity e)
 	{
 		int index = pools[e.poolId].GetIndex<T>() + e.index();
 		T* comp = (T*)components[ComponentType::id<T>()].data;
 		return (T)comp[index];
+	}
+
+	template<typename T>
+	inline T* ECS::GetComponentArray(size_t& size)
+	{
+		auto type = ComponentType::id<T>();
+		size = components[type].used;
+		return (T*)components[type].data;
 	}
 
 	inline void ECS::ComponentArray::allocre(uint32_t alloc)
