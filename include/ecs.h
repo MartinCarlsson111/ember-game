@@ -77,21 +77,74 @@ namespace ecs
 		uint32_t findLowestSizeHint(Archetype archetype);
 		void CreatePool(Archetype type);
 
-		const uint32_t poolSize = 16000U;
+		const uint32_t poolSize = 12800U;
 
 		uint32_t hints[MAXCOMPONENTS] = { 0 };
 		ComponentArray components[MAXCOMPONENTS];
 		std::vector<Pool> pools;
 	public:
 
+		struct EntityArray
+		{
+			void Init(std::vector<ecs::ArrayIntervals> intervals)
+			{
+				int size = 0;
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					size += intervals[i].count;
+				}
+
+				entities = std::vector<Entity>(size);
+				int lastSize = 0;
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					memcpy(&entities[lastSize], intervals[i].pool->GetEntities(), intervals[i].count * sizeof(Entity));
+					lastSize += intervals[i].count;
+				}
+			}
+			std::vector<Entity> entities;
+		};
+		
+
+		template <typename T>
+		struct ComponentArrayP
+		{
+			T* data;
+			int size;
+		};
+
+		template <typename T>
+		struct ComponentDataWrite
+		{
+			void Init(std::vector<ecs::ArrayIntervals> intervals, ComponentArray* compArray)
+			{
+				totalSize = 0;
+
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					totalSize += intervals[i].count;
+				}
+				comps = std::vector<ComponentArrayP<T>>();
+				comps.resize(intervals.size());
+
+				auto type = ComponentType::id<T>();
+				ComponentArray arr = compArray[type];
+				T* dataArr = (T*)arr.data;
+
+				for (int i = 0; i < intervals.size(); i++)
+				{
+					comps[i].data = &dataArr[intervals[i].index];
+					comps[i].size = intervals[i].count;
+				}
+			}
+			std::vector<ComponentArrayP<T>> comps;
+			int totalSize;
+		};
+
+
 		template <typename T>
 		struct ComponentData
 		{
-			ComponentData()
-			{
-
-			}
-
 			void init(std::vector<ecs::ArrayIntervals> intervals, ComponentArray* compArray)
 			{
 				auto type = ComponentType::id<T>();
@@ -100,22 +153,19 @@ namespace ecs
 				{
 					size += intervals[i].count;
 				}
-				//entities = std::vector<Entity>(size);
-				comps = std::vector<T>(size);
 
+				comps = std::vector<T>();
+				comps.resize(size);
 				int lastSize = 0;
+				ComponentArray arr = compArray[type];
+				T* dataArr = (T*)arr.data;
 				for (int i = 0; i < intervals.size(); i++)
 				{
-					ComponentArray arr = compArray[type];
-					T* dataArr = (T*)arr.data;
-					//memcpy(&entities[lastSize], intervals[i].pool->GetEntities(), intervals[i].count * sizeof(Entity));
 					memcpy(&comps[lastSize], &dataArr[intervals[i].index], intervals[i].count * sizeof(T));
-
 					lastSize += intervals[i].count;
 				}
 			}
 			std::vector<T> comps;
-			std::vector<Entity> entities;
 		private:
 		};
 
@@ -178,10 +228,16 @@ namespace ecs
 		void GetComponents(Archetype a, ecs::ECS::ComponentData<T>& comp);
 
 		template <typename T>
+		void GetComponentsWrite(Archetype a, ecs::ECS::ComponentDataWrite<T>& comp);
+
+		template <typename T>
 		T GetComponent(Entity e);
 
 		template <typename T>
 		T* GetComponentArray(size_t& size);
+
+		EntityArray GetEntityArray(Archetype a);
+
 
 
 	};
@@ -269,6 +325,22 @@ namespace ecs
 			counter++;
 		}
 		comp.init(intervals, components);
+	}
+
+	template<typename T>
+	inline void ECS::GetComponentsWrite(Archetype a, ecs::ECS::ComponentDataWrite<T>& comp)
+	{
+		std::vector<ArrayIntervals> intervals;
+		int counter = 0;
+		for (auto pool : pools)
+		{
+			if (pool.type.has(a))
+			{
+				intervals.push_back(ArrayIntervals(pool.GetIndex<T>(), pool.GetUsed(), &pools[counter]));
+			}
+			counter++;
+		}
+		comp.Init(intervals, components);
 	}
 
 	template<typename T>

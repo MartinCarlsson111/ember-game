@@ -12,7 +12,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "entt/entt.hpp"
 
 typedef SDL_Event Event;
 
@@ -64,9 +63,9 @@ void Engine::Run()
 	aabbPlayer.isStatic = false;
 	ecs->SetComponent<AABB>(player, aabbPlayer);
 
-	uint32_t countStatic = 1000000;
+	uint32_t countStatic = 10000;
 
-	uint32_t targetWorldHeight = 50;
+	uint32_t targetWorldHeight = std::sqrt(countStatic);
 	uint32_t divisor = countStatic / targetWorldHeight;
 
 	for (int i = 0; i < countStatic; i++)
@@ -89,26 +88,27 @@ void Engine::Run()
 		ecs->SetComponent<AABB>(e, aabb);
 	}
 
-	uint32_t count = 100001;
+	uint32_t count = 4999;
+	divisor = count / std::sqrt(count);
 	for (size_t i = 0; i < count; i++)
 	{
 		auto e = ecs->CreateEntity(dynamic);
 
-		Position p = Position(i % 64, i / 64);
+		Position p = Position(i % divisor, i / divisor);
 		ecs->SetComponent<Position>(e, p);
 
 		Scale scale = Scale(0.5f, 0.5f);
 
 		ecs->SetComponent<Scale>(e, scale);
 
-		Tile t = Tile(std::rand() % 255);
+		Tile t = Tile(std::rand() % 10);
 		ecs->SetComponent<Tile>(e, t);
-
 		ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
 		AABB aabb = AABB();
 		aabb.h = 1;
 		aabb.w = 1;					
 		aabb.collisionMask = dynamic.types();
+		aabb.isStatic = true;
 		ecs->SetComponent<AABB>(e, aabb);
 	}
 	

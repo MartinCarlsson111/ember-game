@@ -129,6 +129,23 @@ void ecs::ECS::RemoveEntity(Entity e)
 	pools[e.poolId].RemoveEntity(e);
 }
 
+ecs::ECS::EntityArray ecs::ECS::GetEntityArray(Archetype a)
+{
+	std::vector<ArrayIntervals> intervals;
+	int counter = 0;
+	for (auto pool : pools)
+	{
+		if (pool.type.has(a))
+		{
+			intervals.push_back(ArrayIntervals(0, pool.GetUsed(), &pools[counter]));
+		}
+		counter++;
+	}
+	EntityArray arr;
+	arr.Init(intervals);
+	return arr;
+}
+
 void ecs::ECS::ComponentArray::_free()
 {
 	free(data);

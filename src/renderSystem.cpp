@@ -28,7 +28,7 @@ RenderSystem::~RenderSystem()
 
 struct gatherTiles {
 	gatherTiles() {}
-	void operator()(int index, std::vector<SpriteVertex>& vertices, const Position p, const Tile t, const Scale s ) {
+	void operator()(const int index, std::vector<SpriteVertex>& vertices, const Position p, const Tile t, const Scale s ) {
 		vertices[index] = SpriteVertex(p.x, p.y, 0, s.x, s.y, t.index);
 	}
 };
@@ -94,25 +94,41 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 	}
 
 	dynamicTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
-	ecs::ECS::ComponentData<Position> pos;
-	ecs->GetComponents<Position>(dynamicTiles, pos);
-	auto tiles = ecs->GetComponents<Tile>(dynamicTiles);
-	auto scale = ecs->GetComponents<Scale>(dynamicTiles);
-	if (vertices.size() < pos.comps.size())
+	ecs::ECS::ComponentDataWrite<Position> pos;
+	ecs->GetComponentsWrite<Position>(dynamicTiles, pos);
+
+	ecs::ECS::ComponentDataWrite<Tile> tiles;
+	ecs->GetComponentsWrite<Tile>(dynamicTiles, tiles);
+
+	ecs::ECS::ComponentDataWrite<Scale> scale;
+	ecs->GetComponentsWrite<Scale>(dynamicTiles, scale);
+
+
+	if (vertices.size() < pos.totalSize)
 	{
-		vertices.resize(pos.comps.size());
+		vertices.resize(pos.totalSize);
+	}
+	int indexOffset = 0;
+	for (int i = 0; i < pos.comps.size(); i++)
+	{
+		gatherTiles gatherT = gatherTiles();
+
+		auto p = pos.comps[i];
+		auto t = tiles.comps[i];
+		auto s = scale.comps[i];
+		tbb::parallel_for(
+			tbb::blocked_range<size_t>(0, p.size),
+			[&indexOffset, &gatherT, &p, &t, &s, this](const tbb::blocked_range<size_t>& r) {
+				for (size_t j = r.begin(); j < r.end(); ++j)
+				{
+					gatherT(j + indexOffset, vertices, p.data[j], t.data[j], s.data[j]);
+				}
+			}
+		);
+		indexOffset += pos.comps[i].size;
 	}
 
-	gatherTiles gatherT = gatherTiles();
-	tbb::parallel_for(
-		tbb::blocked_range<size_t>(0, pos.comps.size()),
-		[&gatherT, &pos, &tiles, &scale, this](const tbb::blocked_range<size_t>& r) {
-			for (size_t i = r.begin(); i < r.end(); ++i)
-			{
-				gatherT(i, vertices, pos.comps[i], tiles.comps[i], scale.comps[i]);
-			}
-		}
-	);
+	
 
 	if (vertices.size() == 0)
 	{

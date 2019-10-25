@@ -11,13 +11,14 @@ class BroadPhaseSystem
 		glm::vec2 n;
 	};
 
+
+
+public:
 	struct AABBMani
 	{
 		glm::vec2 min;
 		glm::vec2 max;
 	};
-
-public:
 	void Run(ecs::ECS* ecs);
 	void AABBtoAABBManifold(AABBMani A, AABBMani B, Manifold& m);
 	float CalculateTOI(AABBMani a, glm::vec2 velocity, AABBMani b, glm::vec2& contactPoint, glm::vec2& n);
