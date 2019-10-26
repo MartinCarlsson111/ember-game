@@ -47,13 +47,15 @@ void Engine::Run()
 {
 	ecs::ECS* ecs = new ecs::ECS();
 
+	TileSystem tileSystem = TileSystem();
+	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
 	auto playerarch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Player, Movable, Velocity, AABB, Dynamic>();
 	auto dynamic = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Movable, Velocity, AABB, Dynamic>();
 	auto staticArch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, AABB, Static>();
 	auto player = ecs->CreateEntity(playerarch);
 
 	ecs->SetComponent<Position>(player, Position(0, 0));
-	ecs->SetComponent<Tile>(player, Tile(5));
+	ecs->SetComponent<Tile>(player, Tile(32));
 	ecs->SetComponent<Scale>(player, Scale(0.5f, 0.5f));
 
 	AABB aabbPlayer = AABB(0.5f, 0.5f, player.componentMask);
@@ -63,32 +65,40 @@ void Engine::Run()
 	aabbPlayer.isStatic = false;
 	ecs->SetComponent<AABB>(player, aabbPlayer);
 
-	uint32_t countStatic = 10000;
 
-	uint32_t targetWorldHeight = std::sqrt(countStatic);
-	uint32_t divisor = countStatic / targetWorldHeight;
 
-	for (int i = 0; i < countStatic; i++)
+	uint32_t countStatic = 0;
+	uint32_t targetWorldHeight = 0; 
+	uint32_t divisor = 0; 
+	if (countStatic > 0)
 	{
-		auto e = ecs->CreateEntity(staticArch);
+		targetWorldHeight = std::sqrt(countStatic);
+		divisor = countStatic / targetWorldHeight;
 
-		Position p = Position(i % divisor, i / divisor);
-		ecs->SetComponent<Position>(e, p);
+		for (int i = 0; i < countStatic; i++)
+		{
+			auto e = ecs->CreateEntity(staticArch);
 
-		Scale scale = Scale(0.5f, 0.5f);
-		ecs->SetComponent<Scale>(e, scale);
+			Position p = Position(i % divisor, i / divisor);
+			ecs->SetComponent<Position>(e, p);
 
-		Tile t = Tile(std::rand() % 11);
-		ecs->SetComponent<Tile>(e, t);
+			Scale scale = Scale(0.5f, 0.5f);
+			ecs->SetComponent<Scale>(e, scale);
 
-		AABB aabb = AABB();
-		aabb.h = 1;
-		aabb.w = 1;
-		aabb.collisionMask = staticArch.types();
-		ecs->SetComponent<AABB>(e, aabb);
+			Tile t = Tile(11);
+			ecs->SetComponent<Tile>(e, t);
+
+			AABB aabb = AABB();
+			aabb.h = 1;
+			aabb.w = 1;
+			aabb.collisionMask = staticArch.types();
+			ecs->SetComponent<AABB>(e, aabb);
+		}
 	}
+	
 
-	uint32_t count = 4999;
+	
+	uint32_t count = 49999;
 	divisor = count / std::sqrt(count);
 	for (size_t i = 0; i < count; i++)
 	{
@@ -101,22 +111,21 @@ void Engine::Run()
 
 		ecs->SetComponent<Scale>(e, scale);
 
-		Tile t = Tile(std::rand() % 10);
+		Tile t = Tile(32);
 		ecs->SetComponent<Tile>(e, t);
 		ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
 		AABB aabb = AABB();
 		aabb.h = 1;
 		aabb.w = 1;					
 		aabb.collisionMask = dynamic.types();
-		aabb.isStatic = true;
+		aabb.isStatic = false;
 		ecs->SetComponent<AABB>(e, aabb);
 	}
 	
 	RenderSystem renderSystem = RenderSystem();
-	TileSystem tileSystem = TileSystem();
 	MovementSystem moveSystem = MovementSystem();
 
-	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
+
 	BroadPhaseSystem broadPhaseSystem = BroadPhaseSystem();
 	using namespace std;
 

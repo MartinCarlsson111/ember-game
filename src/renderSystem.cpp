@@ -76,8 +76,8 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
 
-				float tileWidth = 256;
-				float width = 1.0f / 8191 * tileWidth;
+				float tileWidth = 16;
+				float width = 1.0f / 511 * tileWidth;
 
 				batch.textureData = glm::vec4(width, width, 32, 32);
 				batch.textureHandle = texture.textureHandle;
@@ -151,7 +151,7 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 			glBindVertexArray(0);
 
 			float tileWidth = 16;
-			float width = 1.0f / 511.0f * tileWidth;
+			float width = 1.0f / 511 * tileWidth;
 
 			dynamicBatch.textureData = glm::vec4(width, width, 32, 32);
 			dynamicBatch.textureHandle = texture.textureHandle;
@@ -165,8 +165,8 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 		}
 		dynamicBatch.count = vertices.size();
 	}
-	renderer->AddSpriteBatch(dynamicBatch);
 	renderer->AddSpriteBatch(batch);
+	renderer->AddSpriteBatch(dynamicBatch);
 }
 
 void RenderSystem::Start()

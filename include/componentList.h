@@ -74,10 +74,15 @@ struct Tile
 struct CollisionInfo
 {
 	Entity collidedWith[MAXNUMBEROFCOLLISIONS];
-	float dist = 0;
-	uint8_t count = 0;
+	float contactPointX[MAXNUMBEROFCOLLISIONS];
+	float contactPointY[MAXNUMBEROFCOLLISIONS];
+	float normalX[MAXNUMBEROFCOLLISIONS];
+	float normalY[MAXNUMBEROFCOLLISIONS];
 
+	int count = 0;
 };
+
+
 
 struct AABB
 {
@@ -91,9 +96,6 @@ struct AABB
 
 	float w = 0, h = 0;
 	uint64_t collisionMask = 0;
-
-
-
 };
 
 struct Speed
@@ -146,5 +148,5 @@ struct Static
 
 struct Dynamic
 {
-
+	
 };

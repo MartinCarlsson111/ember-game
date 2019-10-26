@@ -49,6 +49,7 @@ void MovementSystem::Move(float dt, ecs::ECS* ecs)
 
 	//auto begin = std::chrono::high_resolution_clock::now();
 	//auto pos = ecs->GetComponents<Position>(archetype);
+		//auto begin = std::chrono::high_resolution_clock::now();
 	//auto end = std::chrono::high_resolution_clock::now();
 	//auto delta = end - begin;
 	//auto ms = std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() * 0.000001f;

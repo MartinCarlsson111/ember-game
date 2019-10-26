@@ -3,6 +3,8 @@
 #include "componentList.h"
 class BroadPhaseSystem
 {
+
+public:
 	struct Manifold
 	{
 		uint16_t count;
@@ -11,19 +13,35 @@ class BroadPhaseSystem
 		glm::vec2 n;
 	};
 
+	struct SpatialObject
+	{
+		Position* pos;
+		AABB* aabb;
+	};
 
-
-public:
 	struct AABBMani
 	{
 		glm::vec2 min;
 		glm::vec2 max;
 	};
 	void Run(ecs::ECS* ecs);
-	void AABBtoAABBManifold(AABBMani A, AABBMani B, Manifold& m);
-	float CalculateTOI(AABBMani a, glm::vec2 velocity, AABBMani b, glm::vec2& contactPoint, glm::vec2& n);
 
-	//gather entities
+	void RunCollisionDetection(ecs::ECS* ecs);
+	void UpdateStaticArray(ecs::ECS* ecs);
 
-	//run broadphase
+
+	std::vector<std::vector<SpatialObject>> buckets;
+
+	std::vector<SpatialObject> staticBuckets;
+	std::vector<int> staticBucketSizes;
+
+	int totalSizeStatic;
+
+	int worldSize;
+	int bucketSize;
+	int width;
+
+	//TODO: Deal with keys which are out of bounds
+		//option a: Just let them exist in the last/first bucket
+		//option b: dynamically resize world to fit
 };
