@@ -100,58 +100,66 @@ static float CalculateTOI(BroadPhaseSystem::AABBMani a, glm::vec2 velocity, Broa
 	return t >= 1 ? 1 : t;
 }
 
-//struct BoxTest
-//{
-//	void operator()(int index, BroadPhaseSystem* system, const AABB& aAABB, Position& aPos, const ecs::ECS::ComponentDataWrite<Position>& pos, const ecs::ECS::ComponentDataWrite<AABB>& aabb)
-//	{
-//		for (int j = 0; j < pos.comps.size(); j++)
-//		{
-//			auto p2 = pos.comps[j];
-//			auto ab2 = aabb.comps[j];
-//
-//			for (int k = index + 1; k < p2.size; k++)
-//			{
-//				auto b = p2.data[k];
-//				auto baabb = ab2.data[k];
-//				if (aAABB.isStatic && baabb.isStatic)
-//				{
-//					continue;
-//				}
-//				glm::vec4 _a = glm::vec4(aPos.x, aPos.y, aAABB.w, aAABB.h),
-//					_b = glm::vec4(b.x, b.y, baabb.w, baabb.h);
-//				if (CollisionAlgos::intersect(_a, _b))
-//				{
-//					if (!aAABB.isStatic)
-//					{
-//						BroadPhaseSystem::AABBMani A = { glm::vec2(aPos.x, aPos.y), glm::vec2(aPos.x - aAABB.w, aPos.y + aAABB.h) },
-//							B = { glm::vec2(b.x, b.y), glm::vec2(b.x - baabb.w, b.y + baabb.h) };
-//
-//						glm::vec2 contactP = glm::vec2();
-//						glm::vec2 normal = glm::vec2();
-//						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
-//						aPos.x -= normal.x * 0.5f;
-//						aPos.y -= normal.y * 0.5f;
-//
-//						pos.comps[j].data[k].x -= -normal.x * 0.5f;
-//						pos.comps[j].data[k].y -= -normal.y * 0.5f;
-//					}
-//				}
-//			}
-//		}
-//	}
-//};
+struct BoxTestReference
+{
+	void operator()(int index, BroadPhaseSystem* system, const AABB& aAABB, Position& aPos, const ecs::ECS::ComponentDataWrite<Position>& pos, const ecs::ECS::ComponentDataWrite<AABB>& aabb)
+	{
+		for (int j = 0; j < pos.comps.size(); j++)
+		{
+			auto p2 = pos.comps[j];
+			auto ab2 = aabb.comps[j];
+
+			for (int k = index + 1; k < p2.size; k++)
+			{
+				auto b = p2.data[k];
+				auto baabb = ab2.data[k];
+				if (aAABB.isStatic && baabb.isStatic)
+				{
+					continue;
+				}
+				glm::vec4 _a = glm::vec4(aPos.x, aPos.y, aAABB.w, aAABB.h),
+					_b = glm::vec4(b.x, b.y, baabb.w, baabb.h);
+				if (CollisionAlgos::intersect(_a, _b))
+				{
+					if (!aAABB.isStatic)
+					{
+						BroadPhaseSystem::AABBMani A = { glm::vec2(aPos.x, aPos.y), glm::vec2(aPos.x - aAABB.w, aPos.y + aAABB.h) },
+							B = { glm::vec2(b.x, b.y), glm::vec2(b.x - baabb.w, b.y + baabb.h) };
+
+						glm::vec2 contactP = glm::vec2();
+						glm::vec2 normal = glm::vec2();
+						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
+						aPos.x -= normal.x * 0.5f;
+						aPos.y -= normal.y * 0.5f;
+
+						pos.comps[j].data[k].x -= -normal.x * 0.5f;
+						pos.comps[j].data[k].y -= -normal.y * 0.5f;
+					}
+				}
+			}
+		}
+	}
+};
+
 struct BoxTest
 {
-	void operator()(std::vector<BroadPhaseSystem::SpatialObject>& spatialObjects)
+	void operator()(std::vector<BroadPhaseSystem::SpatialObject>& spatialObjects, const uint64_t index, std::vector<int>& indices)
 	{
-		for (int i = 0; i < spatialObjects.size(); i++)
+		auto end = (index+1) >= indices.size() ? spatialObjects.size() : indices[index+1]; 
+		for (int i = indices[index]; i < end; i++)
 		{
 			auto p1 = spatialObjects[i];
-
-			for (int j = i+1; j < spatialObjects.size(); j++)
+			if (p1.pos == nullptr)
+			{
+				continue;
+			}
+			for (int j = i + 1; j < end; j++)
 			{
 				auto p2 = spatialObjects[j];
-
+				if (p2.pos == nullptr)
+				{
+					continue;
+				}
 				if (p1.aabb->isStatic && p2.aabb->isStatic)
 				{
 					continue;
@@ -178,6 +186,11 @@ struct BoxTest
 				}
 			}
 		}
+		/*
+		for (int i = 0; i < spatialObjects.size(); i++)
+		{
+			
+		}*/
 	}
 };
 
@@ -188,43 +201,66 @@ struct CalculateBucketSizes
 		return (int)(std::floor(px / cellSize) + std::floor(py / cellSize) * width);
 	}
 
-	void operator()(std::vector<std::vector<BroadPhaseSystem::SpatialObject>>& buckets, Position& pos, AABB& aabb, const float& cellSize, const int& width)
+	void operator()(std::vector<int>& buckets, Position& pos, AABB& aabb, const float& cellSize, const int& width)
 	{
-		int a = GetBucketId(pos.x, pos.y, cellSize, width);
-		int b = GetBucketId(pos.x + aabb.w, pos.y, cellSize, width);
-		int c = GetBucketId(pos.x, pos.y + aabb.h, cellSize, width);
-		int d = GetBucketId(pos.x + aabb.w, pos.y + aabb.h, cellSize, width);
-		BroadPhaseSystem::SpatialObject object = { &(pos), &(aabb) };
-		if (a > 0 && a < buckets.size())
-		{
-			buckets[a].push_back(object);
-		}
-		if (b != a && b > 0 && b < buckets.size())
-		{
-			buckets[b].push_back(object);
-		}
-		if (c != b && c != a  && c > 0 && c < buckets.size())
-		{
-			buckets[c].push_back(object);
-		}
-		if (d != c && d != b && d != a && d > 0 && d < buckets.size())
-		{
-			buckets[d].push_back(object);
-		}
+		aabb.indices[0] = GetBucketId(pos.x, pos.y, cellSize, width);
+		aabb.indices[1] = GetBucketId(pos.x + aabb.w, pos.y, cellSize, width);
+		aabb.indices[2] = GetBucketId(pos.x, pos.y + aabb.h, cellSize, width);
+		aabb.indices[3] = GetBucketId(pos.x + aabb.w, pos.y + aabb.h, cellSize, width);
 
-		////buckets[a].push_back(BroadPhaseSystem::SpatialObject() = { &(*pos), &(*aabb)});
-		////if (b != a)
-		////{
-		////	buckets[b].push_back(BroadPhaseSystem::SpatialObject() = { &(*pos), &(*aabb) });
-		////}
-		////if (c != b && c != a)
-		////{
-		////	buckets[c].push_back(BroadPhaseSystem::SpatialObject() = { &(*pos), &(*aabb) });
-		////}
-		////if (d != c && d != b && d != a)
-		////{
-		////	buckets[d].push_back(BroadPhaseSystem::SpatialObject() = { &(*pos), &(*aabb) });
-		////}
+		auto a = aabb.indices[0];
+		auto b = aabb.indices[1];
+		auto c = aabb.indices[2];
+		auto d = aabb.indices[3];
+
+		auto bucketSize = buckets.size();
+
+		if (a >= 0 && a < bucketSize)
+		{
+			buckets[a]++;
+		}
+		if (b != a && b >= 0 && b < bucketSize)
+		{
+			buckets[b]++;
+		}
+		if (c != b && c != a && c >= 0 && c < bucketSize)
+		{
+			buckets[c]++;
+		}
+		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
+		{
+			buckets[d]++;
+		}
+	}
+};
+
+
+struct FillBuckets
+{
+	void operator()(std::vector<int>& bucketIndices, AABB* aabb, Position* pos, std::vector<BroadPhaseSystem::SpatialObject>* buckets)
+	{
+		uint64_t bucketSize = bucketIndices.size();
+		auto a = aabb->indices[0];
+		auto b = aabb->indices[1];
+		auto c = aabb->indices[2];
+		auto d = aabb->indices[3];
+		BroadPhaseSystem::SpatialObject object = { pos, aabb };
+		if (a >= 0 && a < bucketSize)
+		{
+			buckets->operator[](bucketIndices[a]++) = object;
+		}
+		if (b != a && b >= 0 && b < bucketSize)
+		{
+			buckets->operator[](bucketIndices[b]++) = object;
+		}
+		if (c != b && c != a && c >= 0 && c < bucketSize)
+		{
+			buckets->operator[](bucketIndices[c]++) = object;
+		}
+		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
+		{
+			buckets->operator[](bucketIndices[d]++) = object;
+		}
 	}
 };
 
@@ -232,12 +268,9 @@ struct CalculateBucketSizes
 
 void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 {
-	worldSize = 100000;
-	bucketSize = 100;
-	width = worldSize / bucketSize;
-
 	using namespace tbb;
 	using range = blocked_range<size_t>;
+
 	//TODO: I want all dynamic entities to have a collision response component
 	auto aabbEntities = ecs->CreateArchetype<Position, AABB, Dynamic>();
 	ecs::ECS::ComponentDataWrite<Position> pos;
@@ -246,50 +279,103 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 	ecs::ECS::ComponentDataWrite<AABB> aabb;
 	ecs->GetComponentsWrite<AABB>(aabbEntities, aabb);
 
-	buckets.resize(width * width);
+#define SpatialHashing
 
+#ifndef SpatialHashing
+	BoxTestReference boxTestReference;
+
+	for (int i = 0; i < pos.comps.size(); i++)
+	{
+		tbb::parallel_for(range(0, pos.comps[i].size),
+					[&i, &boxTestReference, this, &pos, &aabb](const range& r)
+					{
+						for (int j = r.begin(); j < r.end(); j++)
+						{
+							boxTestReference(j, this, aabb.comps[i].data[j], pos.comps[i].data[j], pos, aabb);
+						}
+					}
+				);
+	}
+
+
+#endif // !SpatialHashing
+
+#ifdef SpatialHashing
+
+	worldSize = 20000;
+	bucketSize = 30;
+	width = worldSize / bucketSize;
+	bucketIndices.resize((uint64_t)width * width);
+	std::fill(bucketIndices.begin(), bucketIndices.end(), 0);
 #define PROFILEMS
 
 
 #ifdef PROFILEMS
 	auto begin = std::chrono::high_resolution_clock::now();
 #endif
-	std::fill(buckets.begin(), buckets.end(), std::vector<SpatialObject>());
+	std::fill(buckets.begin(), buckets.end(), SpatialObject());
+	if (buckets.size() != (uint64_t)pos.totalSize * 4)
+	{
+		buckets.resize((uint64_t)pos.totalSize * 4);
+	}
 #ifdef PROFILEMS
-	//clear
-
-
+	//clear	
 	auto end = std::chrono::high_resolution_clock::now();
 	auto delta = end - begin;
 	auto ms = std::chrono::duration_cast<std::chrono::nanoseconds>(delta).count() * 0.000001f;
 	std::cout << "clear buckets: " << ms << std::endl;
 #endif // PROFILEMS
-	//create buckets
-	//for (int i = 0; i < pos.comps.size(); i++)
-	//{
-	//	CalculateBucketSizes calculateBucketSizes;
-	//	parallel_for(range(0, pos.comps[i].size),
-	//		[&i, &calculateBucketSizes, this, &pos, &aabb](const range& r)
-	//		{
-	//			for (int j = r.begin(); j < r.end(); j++)
-	//			{
-	//				calculateBucketSizes(buckets, pos.comps[i].data[j], aabb.comps[i].data[j], (int)bucketSize, width);
-	//			}
-	//		}
-	//	);
-	//}
+
 
 #ifdef PROFILEMS
 	begin = std::chrono::high_resolution_clock::now();
 #endif
+
 	for (int i = 0; i < pos.comps.size(); i++)
+	{
+		CalculateBucketSizes calculateBucketSizes;
+		parallel_for(range(0, pos.comps[i].size),
+			[&i, &calculateBucketSizes, this, &pos, &aabb](const range& r)
+			{
+				for (int j = r.begin(); j < r.end(); j++)
+				{
+					calculateBucketSizes(bucketIndices, pos.comps[i].data[j], aabb.comps[i].data[j], (int)bucketSize, width);
+				}
+			}
+		);
+	}
+
+	int lastEnd = 0;
+	int lastStart = 0;
+	for (int i = 0; i < bucketIndices.size(); i++)
+	{
+		lastStart = bucketIndices[i];
+		bucketIndices[i] = lastEnd;
+		lastEnd = bucketIndices[i] + lastStart;
+	}
+
+	for (int i = 0; i < pos.comps.size(); i++)
+	{
+		FillBuckets fillBuckets;
+		parallel_for(range(0, pos.comps[i].size),
+			[&i, &fillBuckets, this, &pos, &aabb](const range& r)
+			{
+				for (int j = r.begin(); j < r.end(); j++)
+				{
+					fillBuckets(bucketIndices, &aabb.comps[i].data[j], &pos.comps[i].data[j], &buckets);
+				}
+			}
+		);
+	}
+
+	/*for (int i = 0; i < pos.comps.size(); i++)
 	{
 		CalculateBucketSizes calculateBucketSizes;
 		for (int j = 0; j < pos.comps[i].size; j++)
 		{
 			calculateBucketSizes(buckets, pos.comps[i].data[j], aabb.comps[i].data[j], (int)bucketSize, width);
 		}
-	}
+	}*/
 #ifdef PROFILEMS
 	end = std::chrono::high_resolution_clock::now();
 	delta = end - begin;
@@ -300,12 +386,12 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 #endif
 	//query spatial hashing structure instead of pos.comps
 		BoxTest boxTest;
-		parallel_for(range(0, buckets.size()),
+		parallel_for(range(0, bucketIndices.size()),
 			[&boxTest, this](const range& r)
 			{
-				for (size_t j = r.begin(); j < r.end(); ++j)
+				for (int i = r.begin(); i < r.end(); i++)
 				{
-					boxTest(buckets[j]);
+					boxTest(buckets, i, bucketIndices);
 				}
 			}
 		);
@@ -316,7 +402,7 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 
 		std::cout << "box test: " << ms << std::endl;
 #endif
-
+#endif // SpatialHashing
 }
 
 void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
@@ -341,11 +427,6 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 		totalSizeStatic = staticPos.totalSize;
 	}
 }
-
-
-
-
-
 
 void BroadPhaseSystem::Run(ecs::ECS* ecs)
 {

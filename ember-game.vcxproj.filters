@@ -25,6 +25,12 @@
     <Filter Include="Header Files\physics\collision">
       <UniqueIdentifier>{91320522-4ce2-463b-90e8-509d0fc99296}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\junction">
+      <UniqueIdentifier>{121a73b5-3feb-46be-baf4-8877be4a52ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\junction">
+      <UniqueIdentifier>{66cdbeb8-315b-4e6e-a892-1c78f895e612}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">

@@ -96,29 +96,27 @@ void Engine::Run()
 		}
 	}
 	
-
-	
-	uint32_t count = 49999;
+	uint32_t count = 99999;
 	divisor = count / std::sqrt(count);
 	for (size_t i = 0; i < count; i++)
 	{
 		auto e = ecs->CreateEntity(dynamic);
 
-		Position p = Position(i % divisor, i / divisor);
+		Position p = Position((i % divisor) * 0.1f, (i / divisor) * 0.1f);
 		ecs->SetComponent<Position>(e, p);
 
 		Scale scale = Scale(0.5f, 0.5f);
 
 		ecs->SetComponent<Scale>(e, scale);
 
-		Tile t = Tile(32);
+		Tile t = Tile(32 + (i % 2));
 		ecs->SetComponent<Tile>(e, t);
 		ecs->SetComponent<Velocity>(e, Velocity() = { (std::rand() % 100) * 0.01f, (std::rand() % 100) * 0.01f });
 		AABB aabb = AABB();
-		aabb.h = 1;
-		aabb.w = 1;					
+		aabb.h = 1.f;
+		aabb.w = 1.f;					
 		aabb.collisionMask = dynamic.types();
-		aabb.isStatic = false;
+		aabb.isStatic = i % 2;
 		ecs->SetComponent<AABB>(e, aabb);
 	}
 	

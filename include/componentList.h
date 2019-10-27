@@ -96,6 +96,9 @@ struct AABB
 
 	float w = 0, h = 0;
 	uint64_t collisionMask = 0;
+	uint64_t indices[4];
+
+
 };
 
 struct Speed

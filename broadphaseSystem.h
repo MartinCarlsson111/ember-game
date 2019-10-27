@@ -30,7 +30,8 @@ public:
 	void UpdateStaticArray(ecs::ECS* ecs);
 
 
-	std::vector<std::vector<SpatialObject>> buckets;
+	std::vector<SpatialObject> buckets;
+	std::vector<int> bucketIndices;
 
 	std::vector<SpatialObject> staticBuckets;
 	std::vector<int> staticBucketSizes;
