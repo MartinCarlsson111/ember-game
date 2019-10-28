@@ -1,9 +1,46 @@
 #pragma once
 #include "ecs.h"
 #include "componentList.h"
+#include <atomic>
+#include <vector>
+
+template <typename T>
+struct atomwrapper
+{
+	std::atomic<T> _a;
+
+	atomwrapper()
+		:_a()
+	{}
+
+	atomwrapper(const std::atomic<T>& a)
+		:_a(a.load())
+	{}
+
+	atomwrapper(const atomwrapper& other)
+		:_a(other._a.load())
+	{}
+
+	atomwrapper& operator=(const atomwrapper& other)
+	{
+		_a.store(other._a.load());
+		return *this;
+	}
+
+	int operator++()
+	{
+		return _a.fetch_add(1);
+	}
+
+	void operator++(int)
+	{
+		_a++;
+	}
+};
+
+
 class BroadPhaseSystem
 {
-
 public:
 	struct Manifold
 	{
@@ -31,10 +68,10 @@ public:
 
 
 	std::vector<SpatialObject> buckets;
-	std::vector<int> bucketIndices;
+	std::vector<atomwrapper<int>> bucketIndices;
 
 	std::vector<SpatialObject> staticBuckets;
-	std::vector<int> staticBucketSizes;
+	std::vector<atomwrapper<int>> staticBucketSizes;
 
 	int totalSizeStatic;
 

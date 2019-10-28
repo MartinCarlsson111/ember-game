@@ -58,14 +58,9 @@ void Engine::Run()
 	ecs->SetComponent<Tile>(player, Tile(32));
 	ecs->SetComponent<Scale>(player, Scale(0.5f, 0.5f));
 
-	AABB aabbPlayer = AABB(0.5f, 0.5f, player.componentMask);
-	aabbPlayer.w = 1.0f;
-	aabbPlayer.h = 1.0f;
-	aabbPlayer.collisionMask = player.componentMask;
+	AABB aabbPlayer = AABB(1.0f, 1.0f, player.componentMask);
 	aabbPlayer.isStatic = false;
 	ecs->SetComponent<AABB>(player, aabbPlayer);
-
-
 
 	uint32_t countStatic = 0;
 	uint32_t targetWorldHeight = 0; 
@@ -96,13 +91,13 @@ void Engine::Run()
 		}
 	}
 	
-	uint32_t count = 99999;
+	uint32_t count = 149999;
 	divisor = count / std::sqrt(count);
 	for (size_t i = 0; i < count; i++)
 	{
 		auto e = ecs->CreateEntity(dynamic);
 
-		Position p = Position((i % divisor) * 0.1f, (i / divisor) * 0.1f);
+		Position p = Position((i % divisor), (i / divisor));
 		ecs->SetComponent<Position>(e, p);
 
 		Scale scale = Scale(0.5f, 0.5f);
@@ -122,17 +117,15 @@ void Engine::Run()
 	
 	RenderSystem renderSystem = RenderSystem();
 	MovementSystem moveSystem = MovementSystem();
-
-
 	BroadPhaseSystem broadPhaseSystem = BroadPhaseSystem();
-	using namespace std;
+	using namespace std::chrono;
 
 	double frameTimeAccu = 0.0;
 	int frameCounter = 0;
-	auto begin = chrono::high_resolution_clock::now();
+	auto begin = high_resolution_clock::now();
 	while (isRunning)
 	{
-		auto end = chrono::high_resolution_clock::now();
+		auto end = high_resolution_clock::now();
 		auto dt = end - begin;
 		Input::Update();
 		Event event;
@@ -198,12 +191,12 @@ void Engine::Run()
 			glViewport(wr.x, wr.y, wr.z, wr.w);
 		}
 
-		auto ms = std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count();
+		auto ms = duration_cast<nanoseconds>(dt).count();
 		frameTimeAccu += ms;
 		frameCounter++;
 		if (frameTimeAccu >= 1000000000.0)
 		{
-			cout << frameCounter << endl;
+			std::cout << frameCounter << std::endl;
 			frameTimeAccu = 0.0;
 			frameCounter = 0;
 		}

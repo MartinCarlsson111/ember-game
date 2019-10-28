@@ -17,7 +17,7 @@ TileSystem::~TileSystem()
 void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 {
 	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic, AABB>();
-	auto stat = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
+	auto stat = ecs->CreateArchetype<Position, Scale, Rotation, Tile, AABB, Renderable, Static>();
 	using namespace tinyxml2;
 
 	XMLDocument doc;
@@ -62,12 +62,12 @@ void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 							Tile t = Tile(id);
 							ecs->SetComponent<Tile>(e, id - 1);
 
-							//AABB aabb = AABB();
-							//aabb.h = 1;
-							//aabb.w = 1;
-							//aabb.collisionMask = stat.types();
+							AABB aabb = AABB();
+							aabb.h = 1;
+							aabb.w = 1;
+							aabb.collisionMask = stat.types();
 
-							//ecs->SetComponent<AABB>(e, aabb);
+							ecs->SetComponent<AABB>(e, aabb);
 						}
 						child = child->NextSiblingElement();
 					}

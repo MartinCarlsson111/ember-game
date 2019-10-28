@@ -7,7 +7,7 @@
 
 #include <xmmintrin.h>
 
-const float speed2 = 20.0f;
+const float speed2 = 5.0f;
 
 struct applyVelocityJob {
 	void operator()(float dt, const Entity e, Position p, const Velocity v, ecs::ECS* ecs) {
