@@ -34,7 +34,7 @@ struct atomwrapper
 
 	void operator++(int)
 	{
-		_a++;
+		_a.fetch_add(1);
 	}
 };
 
@@ -52,6 +52,7 @@ public:
 
 	struct SpatialObject
 	{
+		int index;
 		Position* pos;
 		AABB* aabb;
 	};

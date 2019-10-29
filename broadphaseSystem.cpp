@@ -156,9 +156,19 @@ struct BoxTest
 			{
 				continue;
 			}
+
+			
+	
+			
+			/*
+			*/
+			//glm::vec4 _a = glm::vec4(p1.pos->x, p1.pos->x - p1.aabb->w, p1.pos->y, p1.pos->y + p1.aabb->h),
+			//_b = glm::vec4(p2.pos->x, p2.pos->x - p2.aabb->w, p2.pos->y, p2.pos->y + p2.aabb->h);
+			//if (CollisionAlgos::intersectSSE(_a, _b))
+
 			glm::vec4 _a = glm::vec4(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h),
 				_b = glm::vec4(p2.pos->x, p2.pos->y, p2.aabb->w, p2.aabb->h);
-			if (CollisionAlgos::intersect(_a, _b))
+			if (CollisionAlgos::intersectSSE(_a, _b))
 			{
 				BroadPhaseSystem::AABBMani A = { glm::vec2(p1.pos->x, p1.pos->y), glm::vec2(p1.pos->x - p1.aabb->w, p1.pos->y + p1.aabb->h) },
 					B = { glm::vec2(p2.pos->x, p2.pos->y), glm::vec2(p2.pos->x - p2.aabb->w, p2.pos->y + p2.aabb->h) };
@@ -185,59 +195,23 @@ struct BoxTest
 
 struct StaticBoxTest
 {
-	void operator()(const std::vector<BroadPhaseSystem::SpatialObject>& spatialObjects, const BroadPhaseSystem::SpatialObject& p1, const int& i, const int& end)
+	void operator()(const std::vector<BroadPhaseSystem::SpatialObject>& spatialObjects, const std::vector<atomwrapper<int>>& indices, const AABB& a1, Position* p1)
 	{
-		for (int j = i + 1; j < end; j++)
-		{
-			auto p2 = spatialObjects[j];
-
-			if (p1.aabb->isStatic && p2.aabb->isStatic)
-			{
-				continue;
-			}
-			glm::vec4 _a = glm::vec4(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h),
-				_b = glm::vec4(p2.pos->x, p2.pos->y, p2.aabb->w, p2.aabb->h);
-			if (CollisionAlgos::intersect(_a, _b))
-			{
-				BroadPhaseSystem::AABBMani A = { glm::vec2(p1.pos->x, p1.pos->y), glm::vec2(p1.pos->x - p1.aabb->w, p1.pos->y + p1.aabb->h) },
-					B = { glm::vec2(p2.pos->x, p2.pos->y), glm::vec2(p2.pos->x - p2.aabb->w, p2.pos->y + p2.aabb->h) };
-				glm::vec2 contactP = glm::vec2();
-				glm::vec2 normal = glm::vec2();
-				const float tolerance = 0.5f;
-
-				CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
-				if (!p1.aabb->isStatic)
-				{
-					p1.pos->x -= normal.x * tolerance;
-					p1.pos->y -= normal.y * tolerance;
-				}
-				if (!p2.aabb->isStatic)
-				{
-					p2.pos->x += normal.x * tolerance;
-					p2.pos->y += normal.y * tolerance;
-				}
-			}
-		}
-	}
-
-	void operator()(std::vector<BroadPhaseSystem::SpatialObject>* spatialObjects, AABB& a1, Position& p1)
-	{/*
 		for (int i = 0; i < 4; i++)
 		{
-			if (a1.indices[i] > 0 && a1.indices[i] < indices->size())
+			if ((a1.indices[i]-1) > 0 && (a1.indices[i]-1) < indices.size())
 			{
-				for (int a = indices->operator[](a1.indices[i])._a.load(); a < indices->operator[](a1.indices[i] + 1)._a.load(); a++)
+				int end = indices[a1.indices[i]]._a.load();
+				for (int a = indices[a1.indices[i]-1]._a.load(); a < end; a++)
 				{
-					auto b = spatialObjects->operator[](a);
-					glm::vec4 _a = glm::vec4(p1.x, p1.y, a1.w, a1.h),
+					auto b = spatialObjects[a];
+					glm::vec4 _a = glm::vec4(p1->x, p1->y, a1.w, a1.h),
 						_b = glm::vec4(b.pos->x, b.pos->y, b.aabb->w, b.aabb->h);
 
 					if (CollisionAlgos::intersect(_a, _b))
 					{
-						BroadPhaseSystem::AABBMani A = { glm::vec2(p1.x, p1.y), glm::vec2(p1.x - a1.w, p1.y + a1.h) },
+						BroadPhaseSystem::AABBMani A = { glm::vec2(p1->x, p1->y), glm::vec2(p1->x - a1.w, p1->y + a1.h) },
 							B = { glm::vec2(b.pos->x, b.pos->y), glm::vec2(b.pos->x - b.aabb->w, b.pos->y + b.aabb->h) };
-
-
 						glm::vec2 contactP = glm::vec2();
 						glm::vec2 normal = glm::vec2();
 						const float tolerance = 0.5f;
@@ -245,13 +219,13 @@ struct StaticBoxTest
 						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
 						if (!a1.isStatic)
 						{
-							p1.x -= normal.x * tolerance;
-							p1.y -= normal.y * tolerance;
+							p1->x -= normal.x * tolerance;
+							p1->y -= normal.y * tolerance;
 						}
 					}
 				}
 			}
-		}*/
+		}
 	}
 };
 
@@ -262,7 +236,7 @@ struct CalculateBucketSizes
 		return (int)(std::floor(px / cellSize) + std::floor(py / cellSize) * width);
 	}
 
-	void operator()(std::vector<atomwrapper<int>>& buckets, const Position& pos, AABB* aabb, const float& cellSize, const int& width)
+	void operator()(std::vector<atomwrapper<int>>* buckets, const Position& pos, AABB* aabb, const float& cellSize, const int& width)
 	{
 		aabb->indices[0] = GetBucketId(pos.x, pos.y, cellSize, width);
 		aabb->indices[1] = GetBucketId(pos.x + aabb->w, pos.y, cellSize, width);
@@ -274,23 +248,23 @@ struct CalculateBucketSizes
 		auto c = aabb->indices[2];
 		auto d = aabb->indices[3];
 
-		auto bucketSize = buckets.size();
+		auto bucketSize = buckets->size();
 
 		if (a >= 0 && a < bucketSize)
 		{
-			buckets[a]++;
+			buckets->operator[](a)++;
 		}
 		if (b != a && b >= 0 && b < bucketSize)
 		{
-			buckets[b]++;
+			buckets->operator[](b)++;
 		}
 		if (c != b && c != a && c >= 0 && c < bucketSize)
 		{
-			buckets[c]++;
+			buckets->operator[](c)++;
 		}
 		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
 		{
-			buckets[d]++;
+			buckets->operator[](d)++;
 		}
 	}
 };
@@ -311,13 +285,14 @@ struct FillBuckets
 			int index = ++bucketIndices->operator[](a);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-
+			buckets->operator[](index).index = a;
 		}
 		if (b != a && b >= 0 && b < bucketSize)
 		{
 			int index = ++bucketIndices->operator[](b);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
+			buckets->operator[](index).index = b;
 	
 		}
 		if (c != b && c != a && c >= 0 && c < bucketSize)
@@ -325,14 +300,14 @@ struct FillBuckets
 			int index = ++bucketIndices->operator[](c);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-
+			buckets->operator[](index).index = c;
 		}
 		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
 		{
 			int index = ++bucketIndices->operator[](d);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-
+			buckets->operator[](index).index = d;
 		}
 	}
 };
@@ -404,7 +379,7 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 			{
 				for (int j = r.begin(); j < r.end(); j++)
 				{
-					calculateBucketSizes(bucketIndices, pos.comps[i].data[j], aabb.comps[i].data + j, bucketSize, width);
+					calculateBucketSizes(&bucketIndices, pos.comps[i].data[j], aabb.comps[i].data + j, bucketSize, width);
 				}
 			}
 		);
@@ -481,9 +456,7 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 				{
 					for (int j = 0; j < pos.comps[i].size; j++)
 					{
-						auto a = pos.comps[i].data[j];
-						auto b = aabb.comps[i].data[j];
-						staticBoxTest(staticBuckets, a, b);
+						staticBoxTest(staticBuckets, staticBucketSizes, aabb.comps[i].data[j], &pos.comps[i].data[j]);
 					}
 				}
 			}
@@ -513,12 +486,11 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 	if (staticPos.totalSize != totalSizeStatic)
 	{
 		const int vertices = 4;
-		staticBuckets.resize((uint64_t)width * width * vertices);
+		staticBuckets.resize((uint64_t)staticPos.totalSize * vertices);
 		std::fill(staticBuckets.begin(), staticBuckets.end(), SpatialObject());
 		staticBucketSizes.resize((uint64_t)width * width);
 		std::fill(staticBucketSizes.begin(), staticBucketSizes.end(), std::atomic_int(0));
 		
-
 		for (int i = 0; i < staticPos.comps.size(); i++)
 		{
 			CalculateBucketSizes calculateBucketSizes;
@@ -527,7 +499,7 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 				{
 					for (int j = r.begin(); j < r.end(); j++)
 					{
-						calculateBucketSizes(staticBucketSizes, staticPos.comps[i].data[j], staticAABB.comps[i].data + j, bucketSize, width);
+						calculateBucketSizes(&staticBucketSizes, staticPos.comps[i].data[j], staticAABB.comps[i].data + j, bucketSize, width);
 					}
 				}
 			);
@@ -542,7 +514,9 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 			lastEnd = staticBucketSizes[i]._a + lastStart;
 		}
 
-		for (int i = 0; i < staticPos.comps.size(); i++)
+		uint64_t staticPosCompsSize = staticPos.comps.size();
+
+		for (int i = 0; i < staticPosCompsSize; i++)
 		{
 			FillBuckets fillBuckets;
 			parallel_for(range(0, staticPos.comps[i].size),
@@ -555,6 +529,7 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 				}
 			);
 		}
+
 		totalSizeStatic = staticPos.totalSize;
 	}
 }

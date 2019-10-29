@@ -48,7 +48,7 @@ void Engine::Run()
 	ecs::ECS* ecs = new ecs::ECS();
 
 	TileSystem tileSystem = TileSystem();
-	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", ecs);
+	tileSystem.LoadMap("assets//worldmap//ember-game-map.tmx", "assets//worldmap//tileset.tsx", ecs);
 	auto playerarch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Player, Movable, Velocity, AABB, Dynamic>();
 	auto dynamic = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, Movable, Velocity, AABB, Dynamic>();
 	auto staticArch = ecs->CreateArchetype<Position, Renderable, Tile, Scale, Rotation, AABB, Static>();
@@ -91,8 +91,11 @@ void Engine::Run()
 		}
 	}
 	
-	uint32_t count = 149999;
-	divisor = count / std::sqrt(count);
+	uint32_t count = 249999;
+	if (count != 0)
+	{
+		divisor = count / std::sqrt(count);
+	}
 	for (size_t i = 0; i < count; i++)
 	{
 		auto e = ecs->CreateEntity(dynamic);

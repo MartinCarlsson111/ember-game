@@ -14,11 +14,37 @@ TileSystem::~TileSystem()
 {
 }
 
-void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
+void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS* ecs)
 {
 	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic, AABB>();
-	auto stat = ecs->CreateArchetype<Position, Scale, Rotation, Tile, AABB, Renderable, Static>();
+	auto staticCollider = ecs->CreateArchetype<Position, Scale, Rotation, Tile, AABB, Renderable, Static>();
+	auto tileStatic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
 	using namespace tinyxml2;
+	
+	{
+		XMLDocument tilesetDoc;
+		tilesetDoc.LoadFile(tileSetPath);
+		XMLNode* rootNode = tilesetDoc.FirstChildElement();
+
+		if (rootNode != nullptr)
+		{
+			auto nextNode = rootNode->FirstChildElement();
+			while (nextNode != nullptr)
+			{
+				auto it = nextNode->Value();
+				if (!strcmp(it, "tile"))
+				{
+					int gid = nextNode->IntAttribute("id", -1);
+					const char* type;
+					nextNode->QueryStringAttribute("type", &type);
+					tileDB.SetTile(gid+1, TileData(type));
+				}
+				nextNode = nextNode->NextSiblingElement();
+			}
+		}
+	}
+
+
 
 	XMLDocument doc;
 	doc.LoadFile(filePath);
@@ -51,23 +77,70 @@ void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 						auto id = child->IntAttribute("gid", -1);
 						if (id != -1 && id < 992)
 						{
-							auto e = ecs->CreateEntity(stat);
 
-							Position p = Position(y - chunkX+1, x - chunkY+1);
-							ecs->SetComponent<Position>(e, p);	
+							TileData data;
+							if (tileDB.GetTile(id-1, data))
+							{
+								if (data.collider && data.dynamic)
+								{
+									auto e = ecs->CreateEntity(dynamic);
 
-							Scale scale = Scale(0.5f, 0.5f);
-							ecs->SetComponent<Scale>(e, scale);
+									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+									ecs->SetComponent<Position>(e, p);
 
-							Tile t = Tile(id);
-							ecs->SetComponent<Tile>(e, id - 1);
+									Scale scale = Scale(0.5f, 0.5f);
+									ecs->SetComponent<Scale>(e, scale);
 
-							AABB aabb = AABB();
-							aabb.h = 1;
-							aabb.w = 1;
-							aabb.collisionMask = stat.types();
+									ecs->SetComponent<Tile>(e, id - 1);
 
-							ecs->SetComponent<AABB>(e, aabb);
+									AABB aabb = AABB();
+									aabb.isStatic = false;
+									aabb.h = 1;
+									aabb.w = 1;
+									aabb.collisionMask = dynamic.types();
+
+									ecs->SetComponent<AABB>(e, aabb);
+								}
+								else if (data.collider)
+								{
+									auto e = ecs->CreateEntity(staticCollider);
+
+									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+									ecs->SetComponent<Position>(e, p);
+
+									Scale scale = Scale(0.5f, 0.5f);
+									ecs->SetComponent<Scale>(e, scale);
+
+									ecs->SetComponent<Tile>(e, id - 1);
+
+									AABB aabb = AABB();
+									aabb.isStatic = true;
+									aabb.h = 1;
+									aabb.w = 1;
+									aabb.collisionMask = staticCollider.types();
+
+									ecs->SetComponent<AABB>(e, aabb);
+								}
+								else
+								{
+									auto e = ecs->CreateEntity(tileStatic);
+									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+									ecs->SetComponent<Position>(e, p);
+									Scale scale = Scale(0.5f, 0.5f);
+									ecs->SetComponent<Scale>(e, scale);
+									ecs->SetComponent<Tile>(e, id - 1);
+								}
+							}
+							else
+							{
+								auto e = ecs->CreateEntity(tileStatic);
+
+								Position p = Position(y - chunkX + 1, x - chunkY + 1);
+								ecs->SetComponent<Position>(e, p);
+								Scale scale = Scale(0.5f, 0.5f);
+								ecs->SetComponent<Scale>(e, scale);
+								ecs->SetComponent<Tile>(e, id - 1);
+							}
 						}
 						child = child->NextSiblingElement();
 					}
@@ -79,7 +152,20 @@ void TileSystem::LoadMap(const char* filePath, ecs::ECS* ecs)
 	}
 }
 
-TileSystem::TileData TileSystem::Query(const int& x, const int& y) const
+
+void TileSystem::TileDatabase::SetTile(int gid, const TileData value)
 {
-	return TileData();
+	data[gid-1] = value;
 }
+
+bool TileSystem::TileDatabase::GetTile(int id, TileData& tile)
+{
+	auto it = data.find(id);
+	if (it != data.end())
+	{
+		tile = it->second;
+		return true;
+	}
+	return false;
+}
+
