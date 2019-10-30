@@ -91,7 +91,7 @@ void Engine::Run()
 		}
 	}
 	
-	uint32_t count = 249999;
+	uint32_t count = 49999;
 	if (count != 0)
 	{
 		divisor = count / std::sqrt(count);
@@ -131,6 +131,7 @@ void Engine::Run()
 		auto end = high_resolution_clock::now();
 		auto dt = end - begin;
 		Input::Update();
+
 		Event event;
 		while (SDL_PollEvent(&event) != 0)
 		{

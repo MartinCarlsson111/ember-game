@@ -3,6 +3,22 @@
 #include "componentList.h"
 #include <atomic>
 #include <vector>
+#include "profiler.h"
+
+#define ConcurrentHashMap
+
+#include "tbb/concurrent_hash_map.h"
+#include "tbb/concurrent_vector.h"
+
+struct SpatialObject
+{
+	int index;
+	Position* pos;
+	AABB* aabb;
+	Velocity* vel;
+};
+
+using BucketStructure = tbb::concurrent_vector<tbb::concurrent_vector<SpatialObject>>;
 
 template <typename T>
 struct atomwrapper
@@ -50,12 +66,7 @@ public:
 		glm::vec2 n;
 	};
 
-	struct SpatialObject
-	{
-		int index;
-		Position* pos;
-		AABB* aabb;
-	};
+
 
 	struct AABBMani
 	{
@@ -68,6 +79,8 @@ public:
 	void UpdateStaticArray(ecs::ECS* ecs);
 
 
+#ifndef ConcurrentHashMap
+
 	std::vector<SpatialObject> buckets;
 	std::vector<atomwrapper<int>> bucketIndices;
 
@@ -76,9 +89,17 @@ public:
 
 	int totalSizeStatic;
 
+#else
+
+	BucketStructure buckets;
+	BucketStructure staticBuckets;
+#endif // !ConcurrentHashMap
 	int worldSize;
 	int bucketSize;
 	int width;
+	int nBuckets;
+
+	Profiler profiler;
 
 	//TODO: Deal with keys which are out of bounds
 		//option a: Just let them exist in the last/first bucket
