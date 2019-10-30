@@ -91,7 +91,7 @@ void Engine::Run()
 		}
 	}
 	
-	uint32_t count = 49999;
+	uint32_t count = 999999;
 	if (count != 0)
 	{
 		divisor = count / std::sqrt(count);

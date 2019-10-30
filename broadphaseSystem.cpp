@@ -5,6 +5,8 @@
 #include "tbb/tbb.h"
 #define SpatialHashing
 #define PROFILEMS
+using range = tbb::blocked_range<size_t>;
+
 static void AABBtoAABBManifold(BroadPhaseSystem::AABBMani A, BroadPhaseSystem::AABBMani B, BroadPhaseSystem::Manifold& m)
 {
 	m = BroadPhaseSystem::Manifold() =
@@ -357,9 +359,49 @@ struct FillBuckets
 #pragma region Jobs
 struct Boxtest
 {
-	void operator()()
+	void operator()(tbb::concurrent_vector<SpatialObject>& bucket)
 	{
+		const size_t size = bucket.size();
 
+		tbb::parallel_for(range(0, size), [&bucket, &size](const range& r) {
+
+			for (int i = r.begin(); i < r.end(); i++)
+			{
+				auto p1 = bucket[i];
+				glm::vec4 _a = glm::vec4(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h);
+				for (int j = i + 1; j < size; j++)
+				{
+					auto p2 = bucket[j];
+					
+					if (p1.aabb->isStatic && p2.aabb->isStatic)
+					{
+						continue;
+					}
+
+					if (CollisionAlgos::intersect(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h, p2.pos->x, p2.pos->y, p2.aabb->w, p2.aabb->h))
+					{
+						BroadPhaseSystem::AABBMani A = { glm::vec2(p1.pos->x, p1.pos->y), glm::vec2(p1.pos->x - p1.aabb->w, p1.pos->y + p1.aabb->h) },
+							B = { glm::vec2(p2.pos->x, p2.pos->y), glm::vec2(p2.pos->x - p2.aabb->w, p2.pos->y + p2.aabb->h) };
+						glm::vec2 contactP = glm::vec2();
+						glm::vec2 normal = glm::vec2();
+						const float tolerance = 0.5f;
+
+						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
+						if (!p1.aabb->isStatic)
+						{
+							p1.pos->x -= normal.x * tolerance;
+							p1.pos->y -= normal.y * tolerance;
+						}
+						if (!p2.aabb->isStatic)
+						{
+							p2.pos->x += normal.x * tolerance;
+							p2.pos->y += normal.y * tolerance;
+						}
+					}
+				}
+			}
+
+			});
 	}
 };
 
@@ -415,7 +457,7 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 
 
 	using namespace tbb;
-	using range = blocked_range<size_t>;
+
 
 	//TODO: I want all dynamic entities to have a collision response component
 	auto aabbEntities = ecs->CreateArchetype<Position, AABB, Dynamic, Velocity>();
@@ -559,6 +601,7 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 #endif
 #endif // SpatialHashing
 #else
+profiler.Start("Create buckets");
 	if (buckets.size() != nBuckets)
 	{
 		buckets.clear();
@@ -567,12 +610,13 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 			buckets.emplace_back(tbb::concurrent_vector<SpatialObject>());
 		}
 	}
+	profiler.End();
 	profiler.Start("Clear buckets");
 	tbb::parallel_for(range(0, buckets.size()), [this](const range& r) {
 
 		for (int i = r.begin(); i < r.end(); i++)
 		{
-			buckets[i].clear();
+			buckets[i] = tbb::concurrent_vector<SpatialObject>();
 		}
 		});
 	profiler.End();
@@ -593,13 +637,21 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 	}
 	profiler.End();
 
-	//uint64_t counter = 0;
-	//for (int i = 0; i < buckets.size(); i++)
-	//{
-	//	counter += buckets[i].size();
-	//}
-	//std::cout << counter << std::endl;
-	
+	profiler.Start("AABB test ");
+	Boxtest boxtest;
+
+	tbb::parallel_for(range(0, buckets.size()), [this, &boxtest](const range& r)
+		{
+			for (int j = r.begin(); j < r.end(); j++)
+			{
+				boxtest(buckets[j]);
+			}
+		}
+	);
+
+	profiler.End();
+
+
 
 #endif // !ConcurrentHashMap
 }
@@ -676,8 +728,8 @@ void BroadPhaseSystem::UpdateStaticArray(ecs::ECS* ecs)
 
 void BroadPhaseSystem::Run(ecs::ECS* ecs)
 {
-	worldSize = 20000;
-	bucketSize = 20;
+	worldSize = 10000;
+	bucketSize = 10;
 	width = worldSize / bucketSize;
 	nBuckets = width * width;
 

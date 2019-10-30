@@ -14,6 +14,12 @@ public:
 			 b.y + b.w > a.y);
 	}
 
+	inline static bool intersect(const float& ax, const float& ay, const float& aw, const float& ah,
+		const float& bx, const float& by, const float& bw, const float& bh)
+	{
+		return (ax + aw > bx&& bx + bw > ax) && (ay + ah > by&& by + bh > ay);
+	}
+
 	//TODO:https://www.gamedev.net/forums/topic/619296-ultra-fast-2d-aabb-overlap-test/?page=3
 
 
