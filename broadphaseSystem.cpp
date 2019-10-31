@@ -412,9 +412,30 @@ struct FillBuckets
 		return (int)(std::floor(px / cellSize) + std::floor(py / cellSize) * width);
 	}
 
+	__m128 GetBucketIdSSE(float* px, const float* py, const float& cellSize, const int& width)
+	{
+		__m128* a = (__m128*)px;
+		__m128* b = (__m128*)py;
+		__m128 c = _mm_set_ps(cellSize, cellSize, cellSize, cellSize);
+		__m128 w = _mm_set_ps(width, width, width, width);
+		__m128 d = _mm_mul_ps(*a, c);
+		__m128 f = _mm_mul_ps(*b, c);
+		__m128 a2 = _mm_floor_ps(d);
+
+		__m128 b2 = _mm_floor_ps(f);
+		__m128 b3 = _mm_mul_ps(b2, w);
+		return _mm_add_ps(a2, b3);
+	}
+
 	void operator()(BucketStructure* buckets, Position* p, AABB* a, const int& cellSize, const int& width)
 	{
 		const static int indexCount = 4;
+
+		float px[4] = {p->x, p->x +a->w, p->x, p->x + a->w};
+		float py[4] = {p->y, p->y, p->y + a->h, p->y + a->h};
+
+		__m128 indi = GetBucketIdSSE(px, py, cellSize, width);
+
 		int indices[indexCount] = { 0, 0,0 ,0 };
 		indices[0] = GetBucketId(p->x, p->y, cellSize, width);
 		indices[1] = GetBucketId(p->x + a->w, p->y, cellSize, width);
@@ -437,7 +458,7 @@ struct FillBuckets
 			}
 			if (!duplicate)
 			{
-				buckets->operator[](indices[i]).push_back(SpatialObject() = { 0, p, a, nullptr });
+				buckets->operator[](indices[i]).emplace_back(SpatialObject() = { 0, p, a, nullptr });
 			}
 			duplicate = false;
 		}
@@ -605,9 +626,10 @@ profiler.Start("Create buckets");
 	if (buckets.size() != nBuckets)
 	{
 		buckets.clear();
+		buckets.resize(nBuckets);
 		for (int i = 0; i < nBuckets; i++)
 		{
-			buckets.emplace_back(tbb::concurrent_vector<SpatialObject>());
+			buckets[i] = (tbb::concurrent_vector<SpatialObject>());
 		}
 	}
 	profiler.End();

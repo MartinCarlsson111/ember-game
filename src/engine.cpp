@@ -91,7 +91,7 @@ void Engine::Run()
 		}
 	}
 	
-	uint32_t count = 999999;
+	uint32_t count = 149999;
 	if (count != 0)
 	{
 		divisor = count / std::sqrt(count);
@@ -204,7 +204,6 @@ void Engine::Run()
 			frameTimeAccu = 0.0;
 			frameCounter = 0;
 		}
-		//cout << ms << endl;
 		begin = end;
 	}
 	delete ecs;
