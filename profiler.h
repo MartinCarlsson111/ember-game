@@ -4,7 +4,7 @@
 #include <iostream>
 #define PROFILEMS
 
-#ifdef PROFILEMS
+#ifdef PROFILEM
 const bool report = true;
 #else
 const bool report = false;

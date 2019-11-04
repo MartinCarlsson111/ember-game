@@ -16,7 +16,7 @@ TileSystem::~TileSystem()
 
 void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS* ecs)
 {
-	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic, AABB>();
+	auto dynamic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic, AABB, Velocity>();
 	auto staticCollider = ecs->CreateArchetype<Position, Scale, Rotation, Tile, AABB, Renderable, Static>();
 	auto tileStatic = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
 	using namespace tinyxml2;
@@ -30,14 +30,32 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 		{
 			auto nextNode = rootNode->FirstChildElement();
 			while (nextNode != nullptr)
-			{
+			{	
 				auto it = nextNode->Value();
 				if (!strcmp(it, "tile"))
 				{
+					auto properties = nextNode->FirstChildElement();
 					int gid = nextNode->IntAttribute("id", -1);
-					const char* type;
-					nextNode->QueryStringAttribute("type", &type);
-					tileDB.SetTile(gid+1, TileData(type));
+					if (properties)
+					{
+						XMLElement* propertyElements = properties->FirstChildElement();
+						bool collider = false;
+						bool isDynamic = false;
+						while (propertyElements != nullptr)
+						{
+							auto name = propertyElements->Attribute("name");
+							if (!strcmp(name, "collider"))
+							{
+								collider = !strcmp(propertyElements->Attribute("value"), "true") ? true : false;
+							}
+							if (!strcmp(name, "dynamic"))
+							{
+								isDynamic = !strcmp(propertyElements->Attribute("value"), "true") ? true : false;
+							}
+							propertyElements = propertyElements->NextSiblingElement();
+						}
+						tileDB.SetTile(gid + 1, TileData(isDynamic, collider));
+					}
 				}
 				nextNode = nextNode->NextSiblingElement();
 			}
@@ -53,6 +71,25 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 	{
 		return;
 	}
+
+	XMLElement* rootElem = rootNode->ToElement();
+
+	float tilew = 1.0f;
+	float tileh = 1.0f;
+	if (rootElem)
+	{
+		//tilew = 1.0f / (float)rootElem->IntAttribute("tilewidth", 0);
+		//tileh = 1.0f / (float)rootElem->IntAttribute("tileheight", 0);
+
+	}
+
+	float tileWidthHalf = tilew / 4.0f;
+	float tileHeightHalf = tileh / 8.0f;
+
+	float xOffset = 10;
+	float yOffset = 10;
+
+
 
 	auto nextNode = rootNode->FirstChildElement();
 	while (nextNode != nullptr)
@@ -77,7 +114,8 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 						auto id = child->IntAttribute("gid", -1);
 						if (id != -1 && id < 992)
 						{
-
+							float xPos = y - chunkX + 1;
+							float yPos = x - chunkY + 1;
 							TileData data;
 							if (tileDB.GetTile(id-1, data))
 							{
@@ -85,7 +123,9 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 								{
 									auto e = ecs->CreateEntity(dynamic);
 
-									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+									Position p = Position((xPos - yPos) * tileWidthHalf, (xPos + yPos) * tileHeightHalf);
+									p.x += xOffset;
+									p.y += yOffset;
 									ecs->SetComponent<Position>(e, p);
 
 									Scale scale = Scale(0.5f, 0.5f);
@@ -93,19 +133,24 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 
 									ecs->SetComponent<Tile>(e, id - 1);
 
+									ecs->SetComponent<Velocity>(e, Velocity() = { 0, 0 });
+
 									AABB aabb = AABB();
 									aabb.isStatic = false;
-									aabb.h = 1;
-									aabb.w = 1;
+									aabb.h = 0.125f;
+									aabb.w = 0.125f;
 									aabb.collisionMask = dynamic.types();
 
 									ecs->SetComponent<AABB>(e, aabb);
 								}
 								else if (data.collider)
 								{
-									auto e = ecs->CreateEntity(staticCollider);
+									auto e = ecs->CreateEntity(dynamic);
+		
 
-									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+									Position p = Position((xPos - yPos) * tileWidthHalf, (xPos + yPos) * tileHeightHalf);
+									p.x += xOffset;
+									p.y += yOffset;
 									ecs->SetComponent<Position>(e, p);
 
 									Scale scale = Scale(0.5f, 0.5f);
@@ -115,17 +160,21 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 
 									AABB aabb = AABB();
 									aabb.isStatic = true;
-									aabb.h = 1;
-									aabb.w = 1;
-									aabb.collisionMask = staticCollider.types();
+									aabb.h = 0.125f;
+									aabb.w = 0.125f;
+									aabb.collisionMask = dynamic.types();
 
 									ecs->SetComponent<AABB>(e, aabb);
 								}
 								else
 								{
 									auto e = ecs->CreateEntity(tileStatic);
-									Position p = Position(y - chunkX + 1, x - chunkY + 1);
+
+									Position p = Position((xPos - yPos) * tileWidthHalf, (xPos + yPos) * tileHeightHalf);
+									p.x += xOffset;
+									p.y += yOffset;
 									ecs->SetComponent<Position>(e, p);
+
 									Scale scale = Scale(0.5f, 0.5f);
 									ecs->SetComponent<Scale>(e, scale);
 									ecs->SetComponent<Tile>(e, id - 1);
@@ -135,7 +184,12 @@ void TileSystem::LoadMap(const char* filePath, const char* tileSetPath, ecs::ECS
 							{
 								auto e = ecs->CreateEntity(tileStatic);
 
-								Position p = Position(y - chunkX + 1, x - chunkY + 1);
+								float xPos = y - chunkX + 1;
+								float yPos = x - chunkY + 1;
+								
+								Position p = Position((xPos - yPos) * tileWidthHalf, (xPos + yPos) * tileHeightHalf);
+								p.x += xOffset;
+								p.y += yOffset;
 								ecs->SetComponent<Position>(e, p);
 								Scale scale = Scale(0.5f, 0.5f);
 								ecs->SetComponent<Scale>(e, scale);

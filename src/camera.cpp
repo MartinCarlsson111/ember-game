@@ -7,7 +7,7 @@
 #undef near
 #undef far
 
-const float zoomSpeed = 15.0f;
+const float zoomSpeed = 1.0f;
 
 const float movementSpeed = 3.0f;
 
@@ -47,23 +47,23 @@ void Camera::Update(float dt, ecs::ECS* ecs)
 	auto arch = ecs->CreateArchetype<Position, Player>();
 
 	auto playerPos = ecs->GetComponents<Position>(arch);
-	float aspectRat = (float)Engine::wr.w / (float)Engine::wr.z;
-	position = glm::vec4(playerPos.comps[0].x / zoom, -playerPos.comps[0].y / (zoom * aspectRat), 0, 0) + glm::vec4(0.0f, 0, 0, 0);
+	float aspectRat = (float)Engine::wr.z/(float)Engine::wr.w;
+	position = glm::vec4(playerPos.comps[0].x / (zoom * aspectRat), -playerPos.comps[0].y / zoom , 0, 0);
+	//position = glm::vec4(playerPos.comps[0].x, -playerPos.comps[0].y, 0, 0) + glm::vec4(0.0f, 0, 0, 0);
 	lookAt = position;
 
 	view = glm::lookAt(lookAt, lookAt + glm::vec3(0, 0, 1), glm::vec3(0, -1, 0));
 
-
-
-	//projection = glm::ortho(0.0f, (float)Engine::wr.z, (float)Engine::wr.w, 0.0f, near, far);
-	projection = glm::ortho(-zoom, zoom, zoom*aspectRat, -zoom*aspectRat, near, far);
+	projection = glm::ortho(-zoom*aspectRat, zoom*aspectRat, zoom, -zoom, near, far);
+	//projection = glm::ortho(0.0f, aspectRat, 1.0f, 0.0f, near, far);
+	//projection = glm::ortho(-zoom, zoom, zoom*aspectRat, -zoom*aspectRat, near, far);
 	float mWheel = Input::GetMouseWheel();
 	if (mWheel != 0)
 	{
 		zoom += mWheel* zoomSpeed;
-		if (zoom <= 10)
+		if (zoom <= 1)
 		{
-			zoom = 10.0f;
+			zoom = 1.0f;
 		}
 	}
 

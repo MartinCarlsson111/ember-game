@@ -74,8 +74,9 @@ void Renderer::Render()
 
 		glUniform4f(loc, batch.textureData.x, batch.textureData.y, batch.textureData.z, batch.textureData.w);
 
-		glActiveTexture(GL_TEXTURE0 + 1);
+		glActiveTexture(GL_TEXTURE0 + batch.textureHandle);
 		loc = glGetUniformLocation(batch.shaderHandle, "albedoMap");
+
 		glUniform1i(loc, batch.textureHandle);
 		glBindTexture(GL_TEXTURE_2D, batch.textureHandle);
 		glBindVertexArray(batch.vao);

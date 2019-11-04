@@ -2,6 +2,12 @@
 struct Texture2D
 {
 	unsigned int textureHandle;
+
+	int pixelSizeX;
+	int pixelSizeY;
+
+
+
 };
 
 

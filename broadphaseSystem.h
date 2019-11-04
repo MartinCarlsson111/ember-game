@@ -12,7 +12,9 @@
 
 struct SpatialObject
 {
-	int index;
+	/*float v[4];
+	bool isStatic;*/
+
 	Position* pos;
 	AABB* aabb;
 	Velocity* vel;

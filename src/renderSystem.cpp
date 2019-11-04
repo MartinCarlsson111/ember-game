@@ -1,13 +1,19 @@
 #include "renderSystem.h"
 #include "componentList.h"
 #include <iostream>
-
+#include "input.h"
 #include <algorithm>
 
-RenderSystem::RenderSystem()
+RenderSystem::RenderSystem(ecs::ECS* ecs)
 {
-	textureHandler.LoadTextureNoFlip("tileset.png", texture);
-	shader.LoadShaders("basic.vert", "basic.frag", "quad.geo");
+	staticTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
+	dynamicTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
+	aabbRenderables = ecs->CreateArchetype<Position, AABB>();
+	debugEnabled = false;
+	textureHandler.LoadTextureNoFlip("..\\assets\\tileset.png", texture);
+	textureHandler.LoadTextureNoFlip("..\\assets\\debugTexture.png", debugTexture);
+	shader.LoadShaders("..\\shaders\\basic.vert", "..\\shaders\\basic.frag", "..\\shaders\\quad.geo");
+	debugShader.LoadShaders("..\\shaders\\basic.vert", "..\\shaders\\basic.frag", "..\\shaders\\quadlines.geo");
 }
 
 RenderSystem::~RenderSystem()
@@ -33,67 +39,105 @@ struct gatherTiles {
 	}
 };
 
+
+struct gatherDebugTiles
+{
+	gatherDebugTiles() {}
+
+	void operator()(const int index, std::vector<SpriteVertex>& vertices, const Position p, const AABB a)
+	{
+		vertices[index] = SpriteVertex(p.x, p.y, 0, a.w, a.h, (float)a.colliding);
+	}
+};
+
+
+
+
 void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 {
-	if (staticTiles == Archetype())
+	if (Input::GetKeyDown(KeyCode::NUM9))
 	{
-		staticTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Static>();
-		ecs::ECS::ComponentData<Position> pos;
+		debugEnabled = !debugEnabled;
+	}
 
-		ecs->GetComponents<Position>(staticTiles, pos);
-		auto tiles = ecs->GetComponents<Tile>(staticTiles);
-		auto scales = ecs->GetComponents<Scale>(staticTiles);
+	ecs::ECS::ComponentDataWrite<Position> staticPos;
+	ecs->GetComponentsWrite<Position>(dynamicTiles, staticPos);
 
-		std::vector<SpriteVertex> staticVertices = std::vector<SpriteVertex>(pos.comps.size());
-		gatherTiles gatherT = gatherTiles();
-		tbb::parallel_for(
-			tbb::blocked_range<size_t>(0, pos.comps.size()),
-			[&gatherT, &pos, &tiles, &scales, &staticVertices](const tbb::blocked_range<size_t>& r) {
-				for (size_t i = r.begin(); i < r.end(); ++i)
-				{
-					gatherT(i, staticVertices, pos.comps[i], tiles.comps[i], scales.comps[i]);
-				}
-			}
-		);
+	if (staticPos.totalSize != batch.count && staticPos.totalSize != 0)
+	{
+		StaticBatch(ecs);
+	}
+	DynamicBatch(ecs);
 
-		if (staticVertices.size() == 0)
+
+	if (debugEnabled)
+	{
+		DebugBatch(ecs);
+	}
+
+	if (batch.count > 0)
+	{
+		renderer->AddSpriteBatch(batch);
+	}
+	if (dynamicBatch.count > 0)
+	{
+		renderer->AddSpriteBatch(dynamicBatch);
+	}
+	if (debugEnabled)
+	{
+		if (debugBatch.count > 0)
 		{
-			batch.count = 0;
-		}
-		else
-		{
-			if (batch.vbo == 0)
-			{ 
-				glGenBuffers(1, &batch.vbo);
-				glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-				glBufferData(GL_ARRAY_BUFFER, staticVertices.size() * (sizeof(SpriteVertex)), &staticVertices[0], GL_STREAM_DRAW);
-				glGenVertexArrays(1, &batch.vao);
-				glBindVertexArray(batch.vao);
-				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
-				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), (GLvoid*)(2 * sizeof(GLfloat)));
-				glEnableVertexAttribArray(1);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glBindVertexArray(0);
-
-				float tileWidth = 16;
-				float width = 1.0f / 511 * tileWidth;
-
-				batch.textureData = glm::vec4(width, width, 32, 32);
-				batch.textureHandle = texture.textureHandle;
-				batch.shaderHandle = shader.handle;
-			}
-			else
-			{
-				glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-				glBufferData(GL_ARRAY_BUFFER, staticVertices.size() * sizeof(SpriteVertex), &staticVertices[0], GL_STREAM_DRAW);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-			}
-			batch.count = staticVertices.size();
+			renderer->AddSpriteBatch(debugBatch);
 		}
 	}
 
-	dynamicTiles = ecs->CreateArchetype<Position, Scale, Rotation, Tile, Renderable, Dynamic>();
+}
+
+void RenderSystem::StaticBatch(ecs::ECS* ecs)
+{
+	static bool initialized = false;
+	ecs::ECS::ComponentDataWrite<Position> pos;
+	ecs->GetComponentsWrite<Position>(staticTiles, pos);
+
+	ecs::ECS::ComponentDataWrite<Tile> tiles;
+	ecs->GetComponentsWrite<Tile>(staticTiles, tiles);
+
+	ecs::ECS::ComponentDataWrite<Scale> scale;
+	ecs->GetComponentsWrite<Scale>(staticTiles, scale);
+
+	if (!initialized)
+	{
+		if (pos.totalSize > 0)
+		{
+			staticVertices = std::vector<SpriteVertex>(pos.totalSize);
+			int indexOffset = 0;
+			for (int i = 0; i < pos.comps.size(); i++)
+			{
+				gatherTiles gatherT = gatherTiles();
+				auto p = pos.comps[i];
+				auto t = tiles.comps[i];
+				auto s = scale.comps[i];
+				tbb::parallel_for(
+					tbb::blocked_range<size_t>(0, p.size),
+					[&indexOffset, &gatherT, &p, &t, &s, this](const tbb::blocked_range<size_t>& r) {
+						for (size_t j = r.begin(); j < r.end(); ++j)
+						{
+							gatherT(j + indexOffset, staticVertices, p.data[j], t.data[j], s.data[j]);
+						}
+					}
+				);
+				indexOffset += pos.comps[i].size;
+			}
+			batch.count = staticVertices.size();
+			InitializeStatic(ecs);
+			initialized = true;
+		}
+	}
+
+}
+
+void RenderSystem::DynamicBatch(ecs::ECS* ecs)
+{
 	ecs::ECS::ComponentDataWrite<Position> pos;
 	ecs->GetComponentsWrite<Position>(dynamicTiles, pos);
 
@@ -102,73 +146,171 @@ void RenderSystem::Update(ecs::ECS* ecs, Renderer* renderer)
 
 	ecs::ECS::ComponentDataWrite<Scale> scale;
 	ecs->GetComponentsWrite<Scale>(dynamicTiles, scale);
-
-
-	if (vertices.size() < pos.totalSize)
+	static bool initialized = false;
+	if (pos.totalSize > 0)
 	{
-		vertices.resize(pos.totalSize);
-	}
-	int indexOffset = 0;
-	for (int i = 0; i < pos.comps.size(); i++)
-	{
-		gatherTiles gatherT = gatherTiles();
-
-		auto p = pos.comps[i];
-		auto t = tiles.comps[i];
-		auto s = scale.comps[i];
-		tbb::parallel_for(
-			tbb::blocked_range<size_t>(0, p.size),
-			[&indexOffset, &gatherT, &p, &t, &s, this](const tbb::blocked_range<size_t>& r) {
-				for (size_t j = r.begin(); j < r.end(); ++j)
-				{
-					gatherT(j + indexOffset, vertices, p.data[j], t.data[j], s.data[j]);
-				}
-			}
-		);
-		indexOffset += pos.comps[i].size;
-	}
-
-	
-
-	if (vertices.size() == 0)
-	{
-		dynamicBatch.count = 0;
-	}
-	else
-	{
-		if (dynamicBatch.vbo == 0)
+		if (vertices.size() < pos.totalSize)
 		{
-			glGenBuffers(1, &dynamicBatch.vbo);
-			glBindBuffer(GL_ARRAY_BUFFER, dynamicBatch.vbo);
-			glBufferData(GL_ARRAY_BUFFER, vertices.size() * (sizeof(SpriteVertex)), &vertices[0], GL_STREAM_DRAW);
-			glGenVertexArrays(1, &dynamicBatch.vao);
-			glBindVertexArray(dynamicBatch.vao);
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), (GLvoid*)(2 * sizeof(GLfloat)));
-			glEnableVertexAttribArray(1);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
+			vertices.resize(pos.totalSize);
+		}
 
-			float tileWidth = 16;
-			float width = 1.0f / 511 * tileWidth;
+		int indexOffset = 0;
+		for (int i = 0; i < pos.comps.size(); i++)
+		{
+			gatherTiles gatherT = gatherTiles();
+			auto p = pos.comps[i];
+			auto t = tiles.comps[i];
+			auto s = scale.comps[i];
+			tbb::parallel_for(
+				tbb::blocked_range<size_t>(0, p.size),
+				[&indexOffset, &gatherT, &p, &t, &s, this](const tbb::blocked_range<size_t>& r) {
+					for (size_t j = r.begin(); j < r.end(); ++j)
+					{
+						gatherT(j + indexOffset, vertices, p.data[j], t.data[j], s.data[j]);
+					}
+				}
+			);
+			indexOffset += pos.comps[i].size;
+		}
 
-			dynamicBatch.textureData = glm::vec4(width, width, 32, 32);
-			dynamicBatch.textureHandle = texture.textureHandle;
-			dynamicBatch.shaderHandle = shader.handle;
+		if (!initialized)
+		{
+			InitializeDynamic(ecs);
+			initialized = true;
 		}
 		else
 		{
 			glBindBuffer(GL_ARRAY_BUFFER, dynamicBatch.vbo);
 			glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(SpriteVertex), &vertices[0], GL_STREAM_DRAW);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			dynamicBatch.count = vertices.size();
 		}
-		dynamicBatch.count = vertices.size();
 	}
-	renderer->AddSpriteBatch(batch);
-	renderer->AddSpriteBatch(dynamicBatch);
+
 }
 
-void RenderSystem::Start()
+void RenderSystem::DebugBatch(ecs::ECS* ecs)
 {
+	ecs::ECS::ComponentDataWrite<Position> pos;
+	ecs->GetComponentsWrite<Position>(aabbRenderables, pos);
+
+	ecs::ECS::ComponentDataWrite<AABB> aabb;
+	ecs->GetComponentsWrite<AABB>(aabbRenderables, aabb);
+
+
+	static bool initialized = false;
+
+
+	if (pos.totalSize > 0)
+	{
+		if (debugVertices.size() < pos.totalSize)
+		{
+			debugVertices.resize(pos.totalSize);
+		}
+
+		int indexOffset = 0;
+		for (int i = 0; i < pos.comps.size(); i++)
+		{
+			gatherDebugTiles gatherT = gatherDebugTiles();
+			auto p = pos.comps[i];
+			auto a = aabb.comps[i];
+
+			tbb::parallel_for(
+				tbb::blocked_range<size_t>(0, p.size),
+				[&indexOffset, &gatherT, &p, &a, this](const tbb::blocked_range<size_t>& r) {
+					for (size_t j = r.begin(); j < r.end(); ++j)
+					{
+						gatherT(j + indexOffset, debugVertices, p.data[j], a.data[j]);
+					}
+				}
+			);
+			indexOffset += pos.comps[i].size;
+		}
+
+		if (!initialized)
+		{
+			InitializeDebug(ecs);
+			initialized = true;
+		}
+		else
+		{
+			glBindBuffer(GL_ARRAY_BUFFER, debugBatch.vbo);
+			glBufferData(GL_ARRAY_BUFFER, debugVertices.size() * sizeof(SpriteVertex), &debugVertices[0], GL_STREAM_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			debugBatch.count = debugVertices.size();
+		}
+	}
+}
+
+
+void RenderSystem::InitializeStatic(ecs::ECS* ecs)
+{
+	glGenBuffers(1, &batch.vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
+	glBufferData(GL_ARRAY_BUFFER, staticVertices.size() * (sizeof(SpriteVertex)), &staticVertices[0], GL_STREAM_DRAW);
+	glGenVertexArrays(1, &batch.vao);
+	glBindVertexArray(batch.vao);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), (GLvoid*)(2 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	float tileWidthY = 512;
+	float tileWidthX = 256;
+	float xWidth = (1.0f / texture.pixelSizeX) * tileWidthX;
+	float yWidth = (1.0f / texture.pixelSizeY) * tileWidthY;
+	int xTiles = 32;
+	int yTiles = 16;
+	batch.textureData = glm::vec4(xWidth, yWidth, xTiles, yTiles);
+	batch.textureHandle = texture.textureHandle;
+	batch.shaderHandle = shader.handle;
+	batch.count = staticVertices.size();
+}
+
+void RenderSystem::InitializeDynamic(ecs::ECS* ecs)
+{
+	glGenBuffers(1, &dynamicBatch.vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicBatch.vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * (sizeof(SpriteVertex)), &vertices[0], GL_STREAM_DRAW);
+	glGenVertexArrays(1, &dynamicBatch.vao);
+	glBindVertexArray(dynamicBatch.vao);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), (GLvoid*)(2 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	float tileWidthY = 512;
+	float tileWidthX = 256;
+	float xWidth = (1.0f / texture.pixelSizeX) * tileWidthX;
+	float yWidth = (1.0f / texture.pixelSizeY) * tileWidthY;
+	int xTiles = 32;
+	int yTiles = 16;
+	dynamicBatch.textureData = glm::vec4(xWidth, yWidth, xTiles, yTiles);
+	dynamicBatch.textureHandle = texture.textureHandle;
+	dynamicBatch.shaderHandle = shader.handle;
+	dynamicBatch.count = vertices.size();
+
+}
+
+void RenderSystem::InitializeDebug(ecs::ECS* ecs)
+{
+	glGenBuffers(1, &debugBatch.vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, debugBatch.vbo);
+	glBufferData(GL_ARRAY_BUFFER, debugVertices.size() * (sizeof(SpriteVertex)), &debugVertices[0], GL_STREAM_DRAW);
+	glGenVertexArrays(1, &debugBatch.vao);
+	glBindVertexArray(debugBatch.vao);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), NULL); //Pos
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (sizeof(SpriteVertex)), (GLvoid*)(2 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	debugBatch.count = debugVertices.size();
+	debugBatch.textureHandle = debugTexture.textureHandle;
+	debugBatch.shaderHandle = debugShader.handle;
 }

@@ -20,6 +20,12 @@ public:
 		return (ax + aw > bx&& bx + bw > ax) && (ay + ah > by&& by + bh > ay);
 	}
 
+	inline static bool intersect(const float* a, const float* b)
+	{
+		return (a[0] + a[2] > b[0]&& b[0] + b[2] > a[0]) && (a[1] + a[3] > b[3]&& b[1] + b[3] > a[1]);
+
+	}
+
 	//TODO:https://www.gamedev.net/forums/topic/619296-ultra-fast-2d-aabb-overlap-test/?page=3
 
 

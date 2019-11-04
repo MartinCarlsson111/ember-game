@@ -7,7 +7,7 @@
 
 #include <xmmintrin.h>
 
-const float speed2 = 5.0f;
+const float speed2 = 0.3f;
 
 struct applyVelocityJob {
 	void operator()(float dt, const Entity e, Position p, const Velocity v, ecs::ECS* ecs) {
@@ -73,7 +73,7 @@ void MovementSystem::Move(float dt, ecs::ECS* ecs)
 
 
 	//auto begin = std::chrono::high_resolution_clock::now();
-	const float speed = 20.0f;
+	const float speed = 0.3f;
 	const float gravityConst = -1.0f;
 
 	__m128 speed3 = _mm_set_ps(dt * speed, dt * speed, dt * speed, dt * speed);

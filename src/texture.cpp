@@ -66,10 +66,9 @@ void Texture2DHandler::LoadTexture(char* pixels, int width, int height, Texture2
 
 void Texture2DHandler::LoadTextureNoFlip(const char* fileName, Texture2D& texture)
 {
-	int width, height, comp;
+	int comp;
 	unsigned char* imageData;
-
-	imageData = stbi_load(fileName, &width, &height, &comp, STBI_rgb_alpha);
+	imageData = stbi_load(fileName, &texture.pixelSizeX, &texture.pixelSizeY, &comp, STBI_rgb_alpha);
 
 	if (imageData == nullptr)
 	{
@@ -78,13 +77,11 @@ void Texture2DHandler::LoadTextureNoFlip(const char* fileName, Texture2D& textur
 
 	glGenTextures(1, &texture.textureHandle);
 	glBindTexture(GL_TEXTURE_2D, texture.textureHandle);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture.pixelSizeX, texture.pixelSizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
 
 	stbi_image_free(imageData);
 	glBindTexture(GL_TEXTURE_2D, 0);

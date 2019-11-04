@@ -90,14 +90,14 @@ struct AABB
 	AABB(float w, float h, uint64_t mask) :w(w), h(h), collisionMask(mask) {
 		this->w = w;
 		this->h = h;
+		colliding = 0;
 	}
 
 	bool isStatic = true;
 
 	float w = 0, h = 0;
 	uint64_t collisionMask = 0;
-
-	//uint64_t indices[4];
+	uint32_t colliding = 0;
 
 
 };

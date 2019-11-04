@@ -2,6 +2,7 @@
 #include "componentList.h"
 #include <iostream>
 #include "emberCol.h"
+
 #include "tbb/tbb.h"
 #define SpatialHashing
 #define PROFILEMS
@@ -280,14 +281,12 @@ struct FillBuckets
 			int index = ++bucketIndices->operator[](a);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-			buckets->operator[](index).index = a;
 		}
 		if (b != a && b >= 0 && b < bucketSize)
 		{
 			int index = ++bucketIndices->operator[](b);
 			buckets->operator[](index).pos = pos;
-			buckets->operator[](index).aabb = aabb;
-			buckets->operator[](index).index = b;
+			buckets->operator[](index).aabb = aabb;		
 
 		}
 		if (c != b && c != a && c >= 0 && c < bucketSize)
@@ -295,14 +294,14 @@ struct FillBuckets
 			int index = ++bucketIndices->operator[](c);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-			buckets->operator[](index).index = c;
+	
 		}
 		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
 		{
 			int index = ++bucketIndices->operator[](d);
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
-			buckets->operator[](index).index = d;
+
 		}
 	}
 
@@ -320,7 +319,7 @@ struct FillBuckets
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
 			buckets->operator[](index).vel = vel;
-			buckets->operator[](index).index = a;
+
 		}
 		if (b != a && b >= 0 && b < bucketSize)
 		{
@@ -328,7 +327,6 @@ struct FillBuckets
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
 			buckets->operator[](index).vel = vel;
-			buckets->operator[](index).index = b;
 
 		}
 		if (c != b && c != a && c >= 0 && c < bucketSize)
@@ -337,7 +335,7 @@ struct FillBuckets
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
 			buckets->operator[](index).vel = vel;
-			buckets->operator[](index).index = c;
+
 		}
 		if (d != c && d != b && d != a && d >= 0 && d < bucketSize)
 		{
@@ -345,7 +343,6 @@ struct FillBuckets
 			buckets->operator[](index).pos = pos;
 			buckets->operator[](index).aabb = aabb;
 			buckets->operator[](index).vel = vel;
-			buckets->operator[](index).index = d;
 		}
 	}
 };
@@ -365,45 +362,114 @@ struct Boxtest
 
 		tbb::parallel_for(range(0, size), [&bucket, &size](const range& r) {
 
+			//
+
+			//do 4 at once BUT HOOOOOW
+
 			for (int i = r.begin(); i < r.end(); i++)
 			{
 				auto p1 = bucket[i];
-				glm::vec4 _a = glm::vec4(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h);
+				p1.aabb->colliding = 0;
 				for (int j = i + 1; j < size; j++)
 				{
 					auto p2 = bucket[j];
-					
-					if (p1.aabb->isStatic && p2.aabb->isStatic)
+					/*
+	if (p1.aabb->isStatic && p2.aabb->isStatic)
 					{
 						continue;
-					}
+					}*/
 
 					if (CollisionAlgos::intersect(p1.pos->x, p1.pos->y, p1.aabb->w, p1.aabb->h, p2.pos->x, p2.pos->y, p2.aabb->w, p2.aabb->h))
 					{
+						//add collision pair
+
+
 						BroadPhaseSystem::AABBMani A = { glm::vec2(p1.pos->x, p1.pos->y), glm::vec2(p1.pos->x - p1.aabb->w, p1.pos->y + p1.aabb->h) },
 							B = { glm::vec2(p2.pos->x, p2.pos->y), glm::vec2(p2.pos->x - p2.aabb->w, p2.pos->y + p2.aabb->h) };
 						glm::vec2 contactP = glm::vec2();
 						glm::vec2 normal = glm::vec2();
-						const float tolerance = 0.5f;
+						const float tolerance = 0.01f;
 
-						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
-						if (!p1.aabb->isStatic)
+						if (CalculateTOI(A, glm::vec2(0.01f, 0.01f), B, contactP, normal) != 0)
 						{
-							p1.pos->x -= normal.x * tolerance;
-							p1.pos->y -= normal.y * tolerance;
+							if (!p1.aabb->isStatic)
+							{
+								p1.aabb->colliding = 1;
+								p1.pos->x -= normal.x * tolerance;
+								p1.pos->y -= normal.y * tolerance;
+							}
+							if (!p2.aabb->isStatic)
+							{
+								p2.aabb->colliding = 1;
+								p2.pos->x += normal.x * tolerance;
+								p2.pos->y += normal.y * tolerance;
+							}
 						}
-						if (!p2.aabb->isStatic)
-						{
-							p2.pos->x += normal.x * tolerance;
-							p2.pos->y += normal.y * tolerance;
-						}
+						
 					}
+
 				}
 			}
 
 			});
 	}
 };
+//
+//struct Boxtest
+//{
+//	void operator()(const tbb::concurrent_vector<SpatialObject>& bucket, Position* p)
+//	{
+//		const size_t size = bucket.size();
+//
+//		tbb::parallel_for(range(0, size), [&p, &bucket, &size](const range& r) {
+//
+//			//
+//			//do 4 at once BUT HOOOOOW
+//
+//
+//			SpatialObject p1;
+//			SpatialObject p2;
+//			for (int i = r.begin(); i < r.end(); i++)
+//			{
+//	
+//				for (int j = i + 1; j < size; j++)
+//				{
+//
+//					if (bucket[i].isStatic && bucket[j].isStatic)
+//					{
+//						continue;
+//					}
+//
+//					if (CollisionAlgos::intersect(bucket[i].v, bucket[j].v))
+//					{
+//						//add collision pair
+//						p1 = bucket[i];
+//						p2 = bucket[j];
+//						BroadPhaseSystem::AABBMani A = { glm::vec2(p1.v[0], p1.v[1]), glm::vec2(p1.v[0] - p1.v[2], p1.v[1] + p1.v[3]) },
+//							B = { glm::vec2(p2.v[0], p2.v[1]), glm::vec2(p2.v[0] - p2.v[2], p2.v[1] + p2.v[3]) };
+//						glm::vec2 contactP = glm::vec2();
+//						glm::vec2 normal = glm::vec2();
+//						const float tolerance = 0.5f;
+//
+//						CalculateTOI(A, glm::vec2(0.05f, 0.05f), B, contactP, normal);
+//						if (!p1.isStatic)
+//						{
+//							p->x -= normal.x * tolerance;
+//							p->y -= normal.y * tolerance;
+//						}
+//						/*if (!p2.isStatic)
+//						{
+//							p2.x += normal.x * tolerance;
+//							p2.y += normal.y * tolerance;
+//						}*/
+//					}
+//				}
+//			}
+//
+//			});
+//	}
+//};
+
 
 struct FillBuckets
 {
@@ -412,39 +478,30 @@ struct FillBuckets
 		return (int)(std::floor(px / cellSize) + std::floor(py / cellSize) * width);
 	}
 
-	__m128 GetBucketIdSSE(float* px, const float* py, const float& cellSize, const int& width)
+	void GetBucketIdSSE(const float* px, const float* py, const __m128& c, const __m128& w, float* indices)
 	{
 		__m128* a = (__m128*)px;
 		__m128* b = (__m128*)py;
-		__m128 c = _mm_set_ps(cellSize, cellSize, cellSize, cellSize);
-		__m128 w = _mm_set_ps(width, width, width, width);
 		__m128 d = _mm_mul_ps(*a, c);
 		__m128 f = _mm_mul_ps(*b, c);
 		__m128 a2 = _mm_floor_ps(d);
-
 		__m128 b2 = _mm_floor_ps(f);
 		__m128 b3 = _mm_mul_ps(b2, w);
-		return _mm_add_ps(a2, b3);
+		__m128 res = _mm_add_ps(a2, b3);
+		_mm_store_ps(indices, res);
 	}
 
-	void operator()(BucketStructure* buckets, Position* p, AABB* a, const int& cellSize, const int& width)
+	void operator()(BucketStructure* buckets, Position* p, AABB* a, const __m128& cellSize, const __m128& width)
 	{
 		const static int indexCount = 4;
-
-		float px[4] = {p->x, p->x +a->w, p->x, p->x + a->w};
-		float py[4] = {p->y, p->y, p->y + a->h, p->y + a->h};
-
-		__m128 indi = GetBucketIdSSE(px, py, cellSize, width);
-
-		int indices[indexCount] = { 0, 0,0 ,0 };
-		indices[0] = GetBucketId(p->x, p->y, cellSize, width);
-		indices[1] = GetBucketId(p->x + a->w, p->y, cellSize, width);
-		indices[2] = GetBucketId(p->x, p->y + a->h, cellSize, width);
-		indices[3] = GetBucketId(p->x + a->w, p->y + a->h, cellSize, width);
+		const float px[4] = {p->x, p->x +a->w, p->x, p->x + a->w};
+		const float py[4] = {p->y, p->y, p->y + a->h, p->y + a->h};
+		float indices[4];
+		GetBucketIdSSE(px, py, cellSize, width, indices);
 		bool duplicate = false;
 		for (int i = 0; i < indexCount; i++)
 		{
-			if (indices[i] > buckets->size() || indices[i] < 0)
+			if (!(indices[i] < buckets->size()) || indices[i] < 0)
 			{
 				continue;
 			}
@@ -458,7 +515,7 @@ struct FillBuckets
 			}
 			if (!duplicate)
 			{
-				buckets->operator[](indices[i]).emplace_back(SpatialObject() = { 0, p, a, nullptr });
+				buckets->operator[](indices[i]).emplace_back(SpatialObject() = { p,a, nullptr /*p->x, p->y, a->w, a->h, a->isStatic*/});
 			}
 			duplicate = false;
 		}
@@ -478,8 +535,6 @@ void BroadPhaseSystem::RunCollisionDetection(ecs::ECS* ecs)
 
 
 	using namespace tbb;
-
-
 	//TODO: I want all dynamic entities to have a collision response component
 	auto aabbEntities = ecs->CreateArchetype<Position, AABB, Dynamic, Velocity>();
 	ecs::ECS::ComponentDataWrite<Position> pos;
@@ -647,13 +702,19 @@ profiler.Start("Create buckets");
 
 	profiler.Start("Fill Buckets");
 	FillBuckets fillBuckets;
+
+
+	float bucketSizeF = 1.0f / (float)bucketSize;
+	__m128 c = _mm_set_ps(bucketSizeF, bucketSizeF, bucketSizeF, bucketSizeF);
+	__m128 w = _mm_set_ps(width, width, width, width);
+
 	for (int i = 0; i < pos.comps.size(); i++)
 	{
-		tbb::parallel_for(range(0, pos.comps[i].size), [&i, this, &pos, &aabb, &fillBuckets](const range& r) {
+		tbb::parallel_for(range(0, pos.comps[i].size), [&i, this, &pos, &aabb, &fillBuckets, &c, &w](const range& r) {
 
 			for (int j = r.begin(); j < r.end(); j++)
 			{
-				fillBuckets(&buckets, pos.comps[i].data + j, aabb.comps[i].data + j, bucketSize, width);
+				fillBuckets(&buckets, pos.comps[i].data + j, aabb.comps[i].data + j, c, w);
 			}
 			});
 	}
@@ -664,6 +725,7 @@ profiler.Start("Create buckets");
 
 	tbb::parallel_for(range(0, buckets.size()), [this, &boxtest](const range& r)
 		{
+
 			for (int j = r.begin(); j < r.end(); j++)
 			{
 				boxtest(buckets[j]);
